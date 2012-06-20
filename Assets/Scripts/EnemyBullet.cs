@@ -16,6 +16,7 @@ public class EnemyBullet : MonoBehaviour
     TrailRenderer trailRenderer;
 
     float SinceEmitDestruct;
+    float sinceStarted;
 
     void Start()
     {
@@ -30,6 +31,10 @@ public class EnemyBullet : MonoBehaviour
 
     void Update()
     {
+        if (GameFlow.State != GameState.Gameplay) return;
+
+        sinceStarted += Time.deltaTime;
+
         if (IsAutoDestructed)
         {
             sinceDestroyed += Time.deltaTime;
@@ -43,7 +48,7 @@ public class EnemyBullet : MonoBehaviour
         }
 
         transform.position += direction * Time.deltaTime * 30 * Speed;
-        CurrentScale = Mathf.Lerp(CurrentScale, Power * 1.5f, 0.25f);
+        CurrentScale = Mathf.Lerp(CurrentScale, Power * 1.5f, 0.25f * Time.deltaTime / (1 / 60f));
         transform.localScale = new Vector3(CurrentScale, CurrentScale, CurrentScale);
 
         trailRenderer.startWidth = trailRenderer.endWidth = Power;
@@ -95,13 +100,16 @@ public class EnemyBullet : MonoBehaviour
             ShieldGenerator.Instance.Health = Mathf.Max(0, ShieldGenerator.Instance.Health);
             if (ShieldGenerator.Instance.Health <= 0)
                 ShieldGenerator.Instance.FinishGame();
-            Debug.Log("health is now " + ShieldGenerator.Instance.Health);
+            Debug.Log("player health is now " + ShieldGenerator.Instance.Health);
+            Networking.RpcUpdateHealth(ShieldGenerator.Instance.Health);
             IsAutoDestructed = true;
 
             var go = Instantiate(PlanetImpactEffect, -direction * 32.3f, Quaternion.LookRotation(-transform.position.normalized) * Quaternion.Euler(90, 0, 0)) as GameObject;
             go.GetComponent<PlanetImpact>().Direction = direction;
             go.GetComponent<PlanetImpact>().Power = (Power / 4f) * 0.5f + 0.5f;
             go.GetComponent<PlanetImpact>().BulletHue = Hue;
+
+            Debug.Log("Since start : " + sinceStarted);
 
             renderer.enabled = false;
             transform.position = -direction * 30;

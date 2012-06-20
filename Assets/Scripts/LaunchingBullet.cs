@@ -12,7 +12,7 @@ public class LaunchingBullet : MonoBehaviour
 
     void Update()
     {
-        if (transform.position.magnitude > 250)
+        if (transform.position.magnitude > 750)
         {
             Destroy(gameObject);
             return;

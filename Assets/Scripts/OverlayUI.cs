@@ -91,7 +91,7 @@ public class OverlayUI : MonoBehaviour
                     AudioRouter.Instance.PlayShoot(Random.value * 360);
                     GameFlow.State = GameState.ReadyToConnect;
                     ChosenEnemy = e;
-                    ShieldGenerator.Instance.IsAI = e.IsAI;
+                    Networking.Instance.LocalMode = e.IsAI;
                     break;
                 }
             }
@@ -122,7 +122,7 @@ public class OverlayUI : MonoBehaviour
             GL.Vertex3(ssPos.x + (float)Math.Cos(nextA) * OutlineRadius * scaleFactor, ssPos.y + (float)Math.Sin(nextA) * OutlineRadius * scaleFactor, 0);
         }
 
-        var power = Mathf.Lerp(lastPower, Cannon.Instance.AccumulatedPower, 0.15f);
+        var power = Mathf.Lerp(lastPower, Cannon.Instance.AccumulatedPower, 0.15f * Time.deltaTime / (1 / 60f));
         power = Math.Min(power, 4);
 
         var bulletColor = ColorHelper.ColorFromHSV(Cannon.Instance.CurrentHue, 1, 1);
@@ -259,7 +259,7 @@ public class OverlayUI : MonoBehaviour
 
     void EnemyUI(Enemy enemy)
     {
-        var scaleFactor = 1;
+        var scaleFactor = 1.125f;
 
         var ssPos = camera.WorldToScreenPoint(enemy.Location);
 
@@ -287,7 +287,7 @@ public class OverlayUI : MonoBehaviour
             arrowDirection = enemy.LastArrow;
         }
 
-        var ringColor = ShieldGenerator.Instance.EnemyHue.HasValue ? ColorHelper.ColorFromHSV(ShieldGenerator.Instance.EnemyHue.Value, 1, 0.4f) : Color.white;
+        var ringColor = Networking.Instance.EnemyShieldHue.HasValue ? ColorHelper.ColorFromHSV(Networking.Instance.EnemyShieldHue.Value, 1, 0.4f) : Color.white;
 
         GL.Color(ringColor);
 
@@ -304,11 +304,11 @@ public class OverlayUI : MonoBehaviour
             GL.Vertex3(ssPos.x + (float)Math.Cos(nextA) * InnerRadius * scaleFactor, ssPos.y + (float)Math.Sin(nextA) * InnerRadius * scaleFactor, 0);
         }
 
-        if (ShieldGenerator.Instance.EnemyHue.HasValue)
+        if (Networking.Instance.EnemyShieldHue.HasValue)
         {
-            GL.Color(ColorHelper.ColorFromHSV(ShieldGenerator.Instance.EnemyHue.Value, 1, 1));
+            GL.Color(ColorHelper.ColorFromHSV(Networking.Instance.EnemyShieldHue.Value, 1, 1));
 
-            var healthOnOne = Mathf.Clamp01(ShieldGenerator.Instance.EnemyHealth / 500f);
+            var healthOnOne = Mathf.Clamp01(Networking.Instance.EnemyHealth / 500f);
             bool clampNext = false;
             float lastNextFrac = 0;
 

@@ -13,10 +13,6 @@ public class ShieldGenerator : Structure
     GameObject lightGo, sphere, fountain, shieldInAir;
     public List<EnemyBullet> DefendingAgainst = new List<EnemyBullet>();
 
-    public float EnemyHealth = 500;
-    public float? EnemyHue;
-    public bool IsAI;
-
     public static ShieldGenerator Instance;
 
     public bool IsPowered
@@ -48,6 +44,8 @@ public class ShieldGenerator : Structure
     {
         base.LinkHue(hue);
 
+        Networking.RpcUpdateShieldHue(Hue);
+
         if (Hues.Count == 1)
             CurrentHue = Hue;
     }
@@ -68,7 +66,7 @@ public class ShieldGenerator : Structure
 
     void Update()
     {
-        CurrentHealth = Mathf.Lerp(CurrentHealth, Health, 0.1f);
+        CurrentHealth = Mathf.Lerp(CurrentHealth, Health, 0.1f * Time.deltaTime / (1 / 60f));
 
         var addColor = ColorHelper.ColorFromHSV(CurrentHue, 1, currentPower * 0.5f);
         var alphaColor = ColorHelper.ColorFromHSV(CurrentHue, 1, 0.5f);
@@ -122,12 +120,6 @@ public class ShieldGenerator : Structure
     {
         Networking.RpcEndGame();
         transform.parent.BroadcastMessage("OnDie", SendMessageOptions.DontRequireReceiver);
-    }
-
-    public void UpdateEnemyShield(Vector2 data)
-    {
-        EnemyHue = data.x;
-        EnemyHealth = data.y;
     }
 
     public float? AssaultHue

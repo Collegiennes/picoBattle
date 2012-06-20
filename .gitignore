@@ -15,3 +15,6 @@
 /picoBattle.sln
 *.csproj
 /_ReSharper.picoBattle-csharp
+/picoBattle-csharp.5.1.ReSharper.user
+/Assembly-CSharp.pidb
+/picoBattle.userprefs

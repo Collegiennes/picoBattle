@@ -9,6 +9,8 @@ class ConditionalBehaviour : MonoBehaviour
     public Action Action;
     public Condition Condition;
 
+    public bool Volatile;
+
     void Update()
     {
         SinceAlive += Time.deltaTime;
@@ -19,6 +21,13 @@ class ConditionalBehaviour : MonoBehaviour
             Action = null;
             Condition = null;
         }
+    }
+
+    public static void KillSwitch()
+    {
+        foreach (var go in FindObjectsOfType(typeof(ConditionalBehaviour)))
+            if ((go as ConditionalBehaviour).Volatile)
+                Destroy((go as ConditionalBehaviour).gameObject);
     }
 }
 
@@ -32,5 +41,13 @@ public static class Wait
         var w = go.AddComponent<ConditionalBehaviour>();
         w.Condition = condition;
         w.Action = action;
+    }
+    public static void Until(Condition condition, Action action, bool @volatile)
+    {
+        var go = new GameObject("Waiter");
+        var w = go.AddComponent<ConditionalBehaviour>();
+        w.Condition = condition;
+        w.Action = action;
+        w.Volatile = @volatile;
     }
 }

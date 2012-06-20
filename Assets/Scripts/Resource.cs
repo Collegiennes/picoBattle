@@ -66,7 +66,7 @@ public class Resource : Structure
         else
             destinationInner = 450;
 
-        Inner.transform.localScale = Vector3.Lerp(Inner.transform.localScale, new Vector3(destinationInner, destinationInner, destinationInner), 0.15f);
+        Inner.transform.localScale = Vector3.Lerp(Inner.transform.localScale, new Vector3(destinationInner, destinationInner, destinationInner), 0.25f * Time.deltaTime / (1 / 60f));
     }
     public void ChooseSphere(float hue)
     {

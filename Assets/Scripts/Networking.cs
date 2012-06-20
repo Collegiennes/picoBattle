@@ -19,10 +19,41 @@ class Networking : MonoBehaviour
     public bool IsServer;
     public string HostIP;
     public bool ServerReady, ClientReady;
+    public bool LocalMode;
 
     string errorMessage;
 
+    float? sinceAiSawShieldUpdate, aiOffenseReactionTime, aiHueToCounter, aiLastSeenShieldHue, aiLastSeenBulletHue;
+    float sinceAiShot, aiShootCooldown, aiBulletSize;
+    float aiAssaultHue;
+
     public GameObject BulletTemplate;
+
+    float enemyHealth, currentEnemyHealth;
+    public float EnemyHealth
+    {
+        get { return currentEnemyHealth; }
+        set
+        {
+            enemyHealth = value;
+            if (currentEnemyHealth == 0)
+                currentEnemyHealth = value;
+        }
+    }
+
+    float? enemyShieldHue;
+    float currentEnemyShieldHue;
+    public float? EnemyShieldHue
+    {
+        get { return enemyShieldHue.HasValue ? currentEnemyShieldHue : (float?)null; }
+        set
+        {
+            if (!enemyShieldHue.HasValue && value.HasValue)
+                currentEnemyShieldHue = value.Value;
+
+            enemyShieldHue = value;
+        }
+    }
 
     void Start()
     {
@@ -51,12 +82,40 @@ class Networking : MonoBehaviour
 
     public static void RpcShootBullet(float power, float hue)
     {
-        Instance.networkView.RPC("ShootBullet", RPCMode.Others, Instance.IsServer, power, hue);
+        Instance.networkView.RPC("ShootBullet", RPCMode.All, Instance.IsServer, power, hue);
     }
 
-    public static void RpcUpdateShield(float hue, float health)
+    public static void RpcUpdateShieldHue(float hue)
     {
-        Instance.networkView.RPC("UpdateShield", RPCMode.Others, Instance.IsServer, hue, health);
+        Instance.networkView.RPC("UpdateEnemyShieldHue", RPCMode.Others, hue);
+
+        if (Instance.LocalMode)
+        {
+            if (!Instance.aiLastSeenShieldHue.HasValue || (DotHues(hue, Instance.aiLastSeenShieldHue.Value) < 0.9f))
+            {
+                Instance.aiOffenseReactionTime = Random.Range(2, 10);
+                Debug.Log("[AI] will react to shield change in " + Instance.aiOffenseReactionTime.Value + " seconds");
+                Instance.sinceAiSawShieldUpdate = 0;
+                Instance.aiHueToCounter = (hue + 180) % 360;
+
+                Instance.aiLastSeenShieldHue = hue;
+            }
+            else
+                Debug.Log("[AI] ignored shield change, too similar to last one");
+        }
+    }
+
+    static float DotHues(float h1, float h2)
+    {
+        var v1 = new Vector2(Mathf.Cos(Mathf.Deg2Rad * h1), Mathf.Sin(Mathf.Deg2Rad * h1));
+        var v2 = new Vector2(Mathf.Cos(Mathf.Deg2Rad * h2), Mathf.Sin(Mathf.Deg2Rad * h2));
+
+        return Vector2.Dot(v1, v2);
+    }
+
+    public static void RpcUpdateHealth(float health)
+    {
+        Instance.networkView.RPC("UpdateEnemyHealth", RPCMode.Others, health);
     }
 
     public static void TellReady()
@@ -71,15 +130,41 @@ class Networking : MonoBehaviour
         if (server) ServerReady = true; else ClientReady = true;
     }
 
-    float time;
+    void FixedUpdate()
+    {
+        currentEnemyHealth = Mathf.Lerp(currentEnemyHealth, enemyHealth, 0.1f);
 
-    public void Update()
+        if (enemyShieldHue.HasValue)
+            currentEnemyShieldHue = Mathf.LerpAngle(currentEnemyShieldHue, enemyShieldHue.Value, 0.1f);
+    }
+
+    void Update()
     {
         switch (GameFlow.State)
         {
             case GameState.ReadyToConnect:
                 if (HostIP.Length == 0)
                     IsServer = true;
+
+                if (LocalMode)
+                {
+                    EnemyHealth = 500;
+                    EnemyShieldHue = null;
+
+                    // Set AI initial state
+                    ConditionalBehaviour.KillSwitch();
+                    aiShootCooldown = 10;
+                    aiAssaultHue = Random.Range(0, 360);
+                    aiShootCooldown = Random.Range(7, 15);
+                    aiLastSeenShieldHue = null;
+                    aiLastSeenBulletHue = null;
+                    aiBulletSize = 1;
+
+                    aiHueToCounter = Random.Range(0, 360);
+                    aiOffenseReactionTime = Random.Range(5, 15);
+
+                    Debug.Log("[AI] will power up shield in " + aiOffenseReactionTime.Value + " seconds");
+                }
 
                 if (IsServer)
                 {
@@ -103,22 +188,36 @@ class Networking : MonoBehaviour
 
         if (GameFlow.State == GameState.Gameplay)
         {
-            if (ShieldGenerator.Instance.IsAI)
-            {
-                time += Time.deltaTime;
-                if (time > 5)
-                {
-                    AI();
-                    time = 0;
-                }
-            }
+            if (LocalMode)
+                AI();
         }
     }
 
     void AI()
     {
-        Debug.Log("Shot bullet");
-        ShootBullet(false, Random.value * 3 + 1, Random.value * 360);
+        if (sinceAiSawShieldUpdate.HasValue && aiHueToCounter.HasValue)
+        {
+            sinceAiSawShieldUpdate += Time.deltaTime;
+            if (sinceAiSawShieldUpdate.Value > aiOffenseReactionTime)
+            {
+                Debug.Log("[AI] reacting to shield change");
+                aiAssaultHue = RandomHelper.Between(aiHueToCounter.Value - 60, aiHueToCounter.Value + 60) % 360;
+                Instance.aiBulletSize = Random.Range(1, 3);
+                Instance.aiShootCooldown = Random.Range(Instance.aiShootCooldown, 10);
+                aiHueToCounter = null;
+                sinceAiSawShieldUpdate = null;
+            }
+        }
+
+        sinceAiShot += Time.deltaTime;
+        if (sinceAiShot > aiShootCooldown)
+        {
+            aiBulletSize = Mathf.Clamp(aiBulletSize + Random.value, 1, 4);
+            aiShootCooldown = Random.Range(5, aiShootCooldown);
+
+            ShootBullet(false, aiBulletSize, aiAssaultHue);
+            sinceAiShot = 0;
+        }
     }
 
     #region Server
@@ -207,6 +306,48 @@ class Networking : MonoBehaviour
     [RPC]
     public void ShootBullet(bool fromServer, float power, float hue)
     {
+        if (LocalMode && fromServer)
+        {
+            if (!aiLastSeenBulletHue.HasValue || (DotHues(hue, aiLastSeenBulletHue.Value) < 0.9f))
+            {
+                var defenseReactionTime = Random.Range(5, 20);
+                Debug.Log("[AI] will react to bullet hue " + hue + " in " + defenseReactionTime);
+                Wait.Until(t => t > defenseReactionTime, () =>
+                {
+                    Debug.Log("[AI] reacting to bullet hue " + hue);
+                    UpdateEnemyShieldHue(RandomHelper.Between(hue - 60, hue + 60) % 360);
+                }, true);
+
+                aiLastSeenBulletHue = hue;
+            }
+            else
+                Debug.Log("[AI] ignored incoming bullet, too similar to last one");
+
+            // AI gets damaged in a while
+            Wait.Until(t => t > (enemyShieldHue.HasValue ? 21 : 12), () =>
+            {
+                if (enemyShieldHue.HasValue)
+                {
+                    var esHue = enemyShieldHue.Value;
+
+                    var shieldV = new Vector2(Mathf.Cos(Mathf.Deg2Rad * esHue), Mathf.Sin(Mathf.Deg2Rad * esHue)).normalized;
+                    var bulletV = new Vector2(Mathf.Cos(Mathf.Deg2Rad * hue), Mathf.Sin(Mathf.Deg2Rad * hue)).normalized;
+
+                    var malus = (Vector3.Dot(bulletV, shieldV) + 1) / 2;
+                    if (malus < 0.25f) malus = 0;
+
+                    power = Mathf.Max(power - malus * 4, 0);
+                }
+
+                UpdateEnemyHealth(Math.Max(enemyHealth - power * 25, 0));
+
+                Debug.Log("[AI] received bullet, power = " + power + ", health = " + enemyHealth);
+
+                if (enemyHealth <= 0)
+                    EndGame(false);
+            });
+        }
+
         if (fromServer == IsServer)
             return;
 
@@ -233,8 +374,13 @@ class Networking : MonoBehaviour
     }
 
     [RPC]
-    public void UpdateShield(float hue, float health)
+    public void UpdateEnemyShieldHue(float hue)
     {
-        BroadcastMessage("UpdateEnemyShield", new Vector2(hue, health), SendMessageOptions.DontRequireReceiver);
+        EnemyShieldHue = hue;
+    }
+    [RPC]
+    public void UpdateEnemyHealth(float health)
+    {
+        EnemyHealth = health;
     }
 }

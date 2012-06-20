@@ -71,12 +71,13 @@ class CameraOrbit : MonoBehaviour
             DestinationDistance *= -zoom * 0.75f + 1;
         }
 
-        CurrentRotation = Quaternion.Slerp(CurrentRotation, DestinationRotation, 0.2f);
+        CurrentRotation = Quaternion.Slerp(CurrentRotation, DestinationRotation, 0.25f * Time.deltaTime / (1 / 60f));
+        CurrentDistance = Mathf.Lerp(CurrentDistance, DestinationDistance, 0.25f * Time.deltaTime / (1 / 60f));
+
         camera.transform.localRotation = CurrentRotation;
 
         DestinationDistance = Mathf.Clamp(DestinationDistance, 40, 600);
-
-        CurrentDistance = Mathf.Lerp(CurrentDistance, DestinationDistance, 0.2f);
+        
         camera.transform.position = -camera.transform.forward * CurrentDistance;
     }
 }
