@@ -103,11 +103,14 @@ class Networking : MonoBehaviour
 
         if (GameFlow.State == GameState.Gameplay)
         {
-            time += Time.deltaTime;
-            if (time > 5)
+            if (ShieldGenerator.Instance.IsAI)
             {
-                AI();
-                time = 0;
+                time += Time.deltaTime;
+                if (time > 5)
+                {
+                    AI();
+                    time = 0;
+                }
             }
         }
     }

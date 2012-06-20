@@ -15,6 +15,7 @@ public class ShieldGenerator : Structure
 
     public float EnemyHealth = 500;
     public float? EnemyHue;
+    public bool IsAI;
 
     public static ShieldGenerator Instance;
 
@@ -33,8 +34,9 @@ public class ShieldGenerator : Structure
         Instance = this;
 
         CurrentHealth = Health = 500;
-        EnemyHue = 25;
-        EnemyHealth = 300;
+
+        //EnemyHue = 25;
+        //EnemyHealth = 500;
 
         lightGo = gameObject.FindChild("Point light");
         sphere = gameObject.FindChild("shieldgenerator").FindChild("Sphere");

@@ -17,7 +17,16 @@ public class OverlayUI : MonoBehaviour
 
     public GUIStyle style;
 
-    Vector3 EnemyLocation;
+    class Enemy
+    {
+        public Vector3 Location;
+        public Vector2 LastKnownLocation;
+        public Vector3 LastArrow;
+        public bool IsAI;
+    }
+
+    List<Enemy> Enemies;
+    Enemy ChosenEnemy;
 
     Material mat;
     float lastPower;
@@ -34,7 +43,10 @@ public class OverlayUI : MonoBehaviour
         mat.hideFlags = HideFlags.HideAndDontSave;
         mat.shader.hideFlags = HideFlags.HideAndDontSave;
 
-        EnemyLocation = Random.onUnitSphere * 400;
+        Enemies = new List<Enemy>
+        {
+            new Enemy { Location = Random.onUnitSphere * 400, IsAI = true }
+        };
     }
 
     IEnumerator OnPostRender()
@@ -52,8 +64,12 @@ public class OverlayUI : MonoBehaviour
         {
             CannonUI();
             ShieldUI();
+
+            EnemyUI(ChosenEnemy);
         }
-        EnemyUI();
+        else
+            foreach (var e in Enemies)
+                EnemyUI(e);
 
         foreach (var b in ShieldGenerator.Instance.DefendingAgainst.Where(x => !x.IsAutoDestructed).Take(3))
             IncomingBulletUI(b);
@@ -68,10 +84,16 @@ public class OverlayUI : MonoBehaviour
         var mousePos = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
         if (Input.GetMouseButtonDown(0))
         {
-            if ((mousePos - lastKnownLocation).magnitude < 10)
+            foreach (var e in Enemies)
             {
-                AudioRouter.Instance.PlayShoot(Random.value * 360);
-                GameFlow.State = GameState.ReadyToConnect;
+                if ((mousePos - e.LastKnownLocation).magnitude < 10)
+                {
+                    AudioRouter.Instance.PlayShoot(Random.value * 360);
+                    GameFlow.State = GameState.ReadyToConnect;
+                    ChosenEnemy = e;
+                    ShieldGenerator.Instance.IsAI = e.IsAI;
+                    break;
+                }
             }
         }
     }
@@ -235,14 +257,11 @@ public class OverlayUI : MonoBehaviour
         }
     }
 
-    Vector2 lastKnownLocation;
-    Vector3 lastArrow;
-
-    void EnemyUI()
+    void EnemyUI(Enemy enemy)
     {
-        //var angle = Math.Acos(Vector3.Dot(EnemyLocation.normalized, -Camera.main.transform.position.normalized));
+        var scaleFactor = 1;
 
-        var ssPos = camera.WorldToScreenPoint(EnemyLocation);
+        var ssPos = camera.WorldToScreenPoint(enemy.Location);
 
         var arrowDirection = Vector3.zero;
         if (ssPos.x < 25) arrowDirection.x -= 1;
@@ -251,55 +270,93 @@ public class OverlayUI : MonoBehaviour
         if (ssPos.y > Screen.height - 25) arrowDirection.y += 1;
         arrowDirection.Normalize();
 
-        //Debug.Log("x = " + ssPos.x + ", y = " + ssPos.y);
         ssPos.x = Mathf.Clamp(ssPos.x, 25, Screen.width - 25);
         ssPos.y = Mathf.Clamp(ssPos.y, 25, Screen.height - 25);
 
         var camPos = Camera.main.transform.position;
-        var diff = EnemyLocation - camPos;
+        var diff = enemy.Location - camPos;
         if (Physics.RaycastAll(camPos, diff, diff.magnitude).Any(x => x.collider.gameObject.name == "Planet"))
             return;
 
-        if (Vector3.Dot(camPos - EnemyLocation, Camera.main.transform.forward) > 0)
+        if (Vector3.Dot(camPos - enemy.Location, Camera.main.transform.forward) > 0)
         {
-            if (lastKnownLocation == Vector2.zero)
+            if (enemy.LastKnownLocation == Vector2.zero)
                 return;
 
-            ssPos = lastKnownLocation;
-            arrowDirection = lastArrow;
+            ssPos = enemy.LastKnownLocation;
+            arrowDirection = enemy.LastArrow;
         }
 
         var ringColor = ShieldGenerator.Instance.EnemyHue.HasValue ? ColorHelper.ColorFromHSV(ShieldGenerator.Instance.EnemyHue.Value, 1, 0.4f) : Color.white;
 
         GL.Color(ringColor);
 
+        var segments = enemy.IsAI ? 6 : Segments;
+
         // Make backing circle
-        for (int i = 0; i < Segments; i++)
+        for (int i = 0; i < segments; i++)
         {
-            var thisA = i / Segments * Mathf.PI * 2;
-            var nextA = (i + 1) / Segments * Mathf.PI * 2;
+            var thisA = i / segments * Mathf.PI * 2 + Mathf.PI / 2;
+            var nextA = (i + 1) / segments * Mathf.PI * 2 + Mathf.PI / 2;
 
             GL.Vertex3(ssPos.x, ssPos.y, 0);
-            GL.Vertex3(ssPos.x + (float)Math.Cos(thisA) * InnerRadius, ssPos.y + (float)Math.Sin(thisA) * InnerRadius, 0);
-            GL.Vertex3(ssPos.x + (float)Math.Cos(nextA) * InnerRadius, ssPos.y + (float)Math.Sin(nextA) * InnerRadius, 0);
+            GL.Vertex3(ssPos.x + (float)Math.Cos(thisA) * InnerRadius * scaleFactor, ssPos.y + (float)Math.Sin(thisA) * InnerRadius * scaleFactor, 0);
+            GL.Vertex3(ssPos.x + (float)Math.Cos(nextA) * InnerRadius * scaleFactor, ssPos.y + (float)Math.Sin(nextA) * InnerRadius * scaleFactor, 0);
         }
 
         if (ShieldGenerator.Instance.EnemyHue.HasValue)
         {
             GL.Color(ColorHelper.ColorFromHSV(ShieldGenerator.Instance.EnemyHue.Value, 1, 1));
 
-            //var healthOnOne = ShieldGenerator.Instance.EnemyHealth / 500f;
-            var healthOnOne = 0.675f;
+            var healthOnOne = Mathf.Clamp01(ShieldGenerator.Instance.EnemyHealth / 500f);
+            bool clampNext = false;
+            float lastNextFrac = 0;
 
             // Make pointe de tarte
-            for (int i = 0; i < Segments; i++)
+            for (int i = 0; i <= Segments; i++)
             {
-                var thisA = i / Segments * Mathf.PI * -2 * Mathf.Clamp01(healthOnOne) + Mathf.PI / 2;
-                var nextA = (i + 1) / Segments * Mathf.PI * -2 * Mathf.Clamp01(healthOnOne) + Mathf.PI / 2;
+                var thisA = i / Segments * Mathf.PI * -2 * healthOnOne + Mathf.PI / 2;
+                var nextA = (i + 1) / Segments * Mathf.PI * -2 * healthOnOne + Mathf.PI / 2;
+
+                float cosThis = Mathf.Cos(thisA), sinThis = Mathf.Cos(thisA);
+                float cosNext = Mathf.Cos(nextA), sinNext = Mathf.Cos(nextA);
+
+                if (enemy.IsAI)
+                {
+                    float h1ThisStep = Mathf.Floor((i / Segments * healthOnOne) * 6f) / 6f, h2ThisStep = Mathf.Ceil((i / Segments * healthOnOne) * 6f) / 6f;
+                    float h1NextStep = Mathf.Floor(((i + 1) / Segments * healthOnOne) * 6f) / 6f, h2NextStep = Mathf.Ceil(((i + 1) / Segments * healthOnOne) * 6f) / 6f;
+                    var thisFrac = MathHelper.Frac(i / Segments * healthOnOne * 6f);
+                    var nextFrac = MathHelper.Frac((i + 1) / Segments * healthOnOne * 6f);
+
+                    float h1ThisA = h1ThisStep * Mathf.PI * -2 + Mathf.PI / 2, h1NextA = h1NextStep * Mathf.PI * -2 + Mathf.PI / 2;
+                    float h2ThisA = h2ThisStep * Mathf.PI * -2 + Mathf.PI / 2, h2NextA = h2NextStep * Mathf.PI * -2 + Mathf.PI / 2;
+
+                    if (i == Segments && clampNext)
+                        nextFrac = lastNextFrac;
+                    else if (i == Segments && !clampNext)
+                        continue;
+
+                    if (clampNext)
+                    {
+                        thisFrac = 0;
+                        clampNext = false;
+                    }
+                    else if (h1ThisStep != h1NextStep)
+                    {
+                        lastNextFrac = nextFrac;
+                        nextFrac = 0;
+                        clampNext = true;
+                    }
+
+                    cosThis = Mathf.Lerp(Mathf.Cos(h1ThisA), Mathf.Cos(h2ThisA), thisFrac);
+                    sinThis = Mathf.Lerp(Mathf.Sin(h1ThisA), Mathf.Sin(h2ThisA), thisFrac);
+                    cosNext = Mathf.Lerp(Mathf.Cos(h1NextA), Mathf.Cos(h2NextA), nextFrac);
+                    sinNext = Mathf.Lerp(Mathf.Sin(h1NextA), Mathf.Sin(h2NextA), nextFrac);
+                }
 
                 GL.Vertex3(ssPos.x, ssPos.y, 0);
-                GL.Vertex3(ssPos.x + (float)Math.Cos(thisA) * InnerRadius, ssPos.y + (float)Math.Sin(thisA) * InnerRadius, 0);
-                GL.Vertex3(ssPos.x + (float)Math.Cos(nextA) * InnerRadius, ssPos.y + (float)Math.Sin(nextA) * InnerRadius, 0);
+                GL.Vertex3(ssPos.x + cosThis * InnerRadius * scaleFactor, ssPos.y + sinThis * InnerRadius * scaleFactor, 0);
+                GL.Vertex3(ssPos.x + cosNext * InnerRadius * scaleFactor, ssPos.y + sinNext * InnerRadius * scaleFactor, 0);
             }
         }
 
@@ -307,36 +364,36 @@ public class OverlayUI : MonoBehaviour
         GL.Color(bgColor);
 
         // Make hole
-        for (int i = 0; i < Segments; i++)
+        for (int i = 0; i < segments; i++)
         {
-            var thisA = i / Segments * Mathf.PI * 2;
-            var nextA = (i + 1) / Segments * Mathf.PI * 2;
+            var thisA = i / segments * Mathf.PI * 2 + Mathf.PI / 2;
+            var nextA = (i + 1) / segments * Mathf.PI * 2 + Mathf.PI / 2;
 
             GL.Vertex3(ssPos.x, ssPos.y, 0);
-            GL.Vertex3(ssPos.x + (float)Math.Cos(thisA) * InnerMaskRadius, ssPos.y + (float)Math.Sin(thisA) * InnerMaskRadius, 0);
-            GL.Vertex3(ssPos.x + (float)Math.Cos(nextA) * InnerMaskRadius, ssPos.y + (float)Math.Sin(nextA) * InnerMaskRadius, 0);
+            GL.Vertex3(ssPos.x + (float)Math.Cos(thisA) * InnerMaskRadius * scaleFactor, ssPos.y + (float)Math.Sin(thisA) * InnerMaskRadius * scaleFactor, 0);
+            GL.Vertex3(ssPos.x + (float)Math.Cos(nextA) * InnerMaskRadius * scaleFactor, ssPos.y + (float)Math.Sin(nextA) * InnerMaskRadius * scaleFactor, 0);
         }
 
         GL.Color(Color.white);
 
         if (GameFlow.State == GameState.Gameplay)
         {
-            // Make core (assault)
-            for (int i = 0; i < Segments; i++)
+            // Make core
+            for (int i = 0; i < segments; i++)
             {
-                var thisA = i / Segments * Mathf.PI * 2;
-                var nextA = (i + 1) / Segments * Mathf.PI * 2;
+                var thisA = i / segments * Mathf.PI * 2 + Mathf.PI / 2;
+                var nextA = (i + 1) / segments * Mathf.PI * 2 + Mathf.PI / 2;
 
                 GL.Vertex3(ssPos.x, ssPos.y, 0);
-                GL.Vertex3(ssPos.x + (float)Math.Cos(thisA) * CoreRadius, ssPos.y + (float)Math.Sin(thisA) * CoreRadius, 0);
-                GL.Vertex3(ssPos.x + (float)Math.Cos(nextA) * CoreRadius, ssPos.y + (float)Math.Sin(nextA) * CoreRadius, 0);
+                GL.Vertex3(ssPos.x + (float)Math.Cos(thisA) * CoreRadius * scaleFactor, ssPos.y + (float)Math.Sin(thisA) * CoreRadius * scaleFactor, 0);
+                GL.Vertex3(ssPos.x + (float)Math.Cos(nextA) * CoreRadius * scaleFactor, ssPos.y + (float)Math.Sin(nextA) * CoreRadius * scaleFactor, 0);
             }
         }
 
-        if (Vector3.Dot(camPos - EnemyLocation, Camera.main.transform.forward) < 0)
+        if (Vector3.Dot(camPos - enemy.Location, Camera.main.transform.forward) < 0)
         {
-            lastKnownLocation = ssPos;
-            lastArrow = arrowDirection;
+            enemy.LastKnownLocation = ssPos;
+            enemy.LastArrow = arrowDirection;
         }
 
         // Make arrow?
