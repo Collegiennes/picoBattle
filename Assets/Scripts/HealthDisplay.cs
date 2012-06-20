@@ -14,7 +14,7 @@ class HealthDisplay : MonoBehaviour
     void Start()
     {
         lr = GetComponent<LineRenderer>();
-        lr.SetWidth(2, 2);
+        lr.SetWidth(2.5f, 2.5f);
 
         currentHealth = 1;
         currentSat = 0;
@@ -22,17 +22,19 @@ class HealthDisplay : MonoBehaviour
         currentDistance = 46f;
     }
 
-    void Update()
+    void FixedUpdate()
     {
+        if (ShieldGenerator.Instance == null) return;
+
         var powered = ShieldGenerator.Instance.IsPowered;
         var gameStarted = GameFlow.State >= GameState.Gameplay;
 
-        var opacity = (powered ? 1 : 0.5f) * (IsDeath ? 0.1f : 0.5f);
+        var opacity = (powered ? 1 : 0.5f) * (IsDeath ? 0.1f : 0.625f);
         if (!gameStarted)
             opacity = 0;
         currentOpacity = Mathf.Lerp(currentOpacity, opacity, 0.1f);
 
-        currentHue = Mathf.Lerp(currentHue, ShieldGenerator.Instance.Hue, 0.1f);
+        currentHue = Mathf.LerpAngle(currentHue, ShieldGenerator.Instance.Hue, 0.1f);
         currentSat = Mathf.Lerp(currentSat, powered ? 1 : 0, 0.1f);
 
         var color = ColorHelper.ColorFromHSV(currentHue, currentSat, currentOpacity) * 0.5f;

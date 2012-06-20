@@ -14,6 +14,13 @@ class Placement : MonoBehaviour
 
     List<GameObject> Resources = new List<GameObject>();
 
+    public static Placement Instance;
+
+    void Awake()
+    {
+        Instance = this;
+    }
+
     void Start()
     {
         Place();
@@ -52,5 +59,25 @@ class Placement : MonoBehaviour
                 Resources.Add(go);
             }
         }
+    }
+
+    public Vector3 GetCleanVector()
+    {
+        var resourceVectors = new List<Vector3> { Vector3.up, Vector3.down };
+
+        const int Attempts = 200;
+        for (int i = 0; i < Attempts; i++)
+        {
+            var randomTest = Random.onUnitSphere;
+            bool allAway = true;
+            foreach (var m in resourceVectors)
+                if (!(allAway &= Vector3.Angle(randomTest, m) * Mathf.Deg2Rad * SphereRadius > ExclusionArc))
+                    break;
+            if (allAway)
+                return randomTest;
+        }
+
+        Debug.Log("Failed");
+        return Random.onUnitSphere;
     }
 }

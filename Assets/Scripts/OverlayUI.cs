@@ -70,8 +70,8 @@ public class OverlayUI : MonoBehaviour
         {
             if ((mousePos - lastKnownLocation).magnitude < 10)
             {
-                GameFlow.State = GameState.Gameplay;
-                Networking.Instance.IsServer = true;
+                AudioRouter.Instance.PlayShoot(Random.value * 360);
+                GameFlow.State = GameState.ReadyToConnect;
             }
         }
     }

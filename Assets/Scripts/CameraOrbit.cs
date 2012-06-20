@@ -10,11 +10,25 @@ class CameraOrbit : MonoBehaviour
     public float CurrentDistance;
     Quaternion DestinationRotation, CurrentRotation;
 
+    AudioSource introTrack;
+
     void Start()
     {
         Mouse = MouseManager.Instance;
         //Gamepads = GamepadsManager.Instance;
         DestinationDistance = 100;
+
+        introTrack = GetComponentsInChildren<AudioSource>()[1];
+    }
+
+    void FixedUpdate()
+    {
+        if (introTrack == null) return;
+        introTrack.volume = Mathf.Lerp(introTrack.volume, GameFlow.State == GameState.Login ? 0.625f : 0, 0.05f);
+        if (introTrack.volume < 0.01f && introTrack.isPlaying)
+            introTrack.Stop();
+        if (introTrack.volume > 0.01f && !introTrack.isPlaying)
+            introTrack.Play();
     }
 
     void Update()

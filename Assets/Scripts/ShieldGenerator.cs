@@ -22,6 +22,7 @@ public class ShieldGenerator : Structure
     {
         get { return Hues.Count > 0; }
     }
+    float currentPower;
 
     protected override void Start()
     {
@@ -39,11 +40,6 @@ public class ShieldGenerator : Structure
         sphere = gameObject.FindChild("shieldgenerator").FindChild("Sphere");
         fountain = gameObject.FindChild("shieldgenerator").FindChild("Shield");
         shieldInAir = gameObject.FindChild("Shield");
-
-        lightGo.light.intensity = 0;
-        fountain.renderer.enabled = sphere.renderer.enabled = false;
-        foreach (var r in shieldInAir.GetComponentsInChildren<Renderer>())
-            r.renderer.enabled = false;
     }
 
     public override void LinkHue(float hue)
@@ -51,42 +47,37 @@ public class ShieldGenerator : Structure
         base.LinkHue(hue);
 
         if (Hues.Count == 1)
-        {
-            lightGo.light.intensity = 1;
-            fountain.renderer.enabled = sphere.renderer.enabled = true;
-            foreach (var r in shieldInAir.GetComponentsInChildren<Renderer>())
-                r.renderer.enabled = true;
-
             CurrentHue = Hue;
-        }
     }
 
-    public override void UnlinkHue(float hue)
-    {
-        base.UnlinkHue(hue);
 
-        if (Hues.Count == 0)
+    void FixedUpdate()
+    {
+        currentPower = Mathf.Lerp(currentPower, IsPowered ? 0.8f + Mathf.Sin(Time.timeSinceLevelLoad * 1.75f) * 0.2f : 0, 0.1f);
+        lightGo.light.intensity = currentPower;
+
+        if (IsPowered)
         {
-            fountain.renderer.enabled = sphere.renderer.enabled = false;
-            foreach (var r in shieldInAir.GetComponentsInChildren<Renderer>())
-                r.renderer.enabled = false;
-            lightGo.light.intensity = 0;
+            CurrentHue = Mathf.LerpAngle(CurrentHue, Hue, 0.1f);
+            if (CurrentHue < 0) CurrentHue += 360;
+            if (CurrentHue > 360) CurrentHue -= 360;
         }
     }
 
     void Update()
     {
-        CurrentHue = Mathf.LerpAngle(CurrentHue, Hue, 0.1f);
-        if (CurrentHue < 0) CurrentHue += 360;
-        if (CurrentHue > 360) CurrentHue -= 360;
-
         CurrentHealth = Mathf.Lerp(CurrentHealth, Health, 0.1f);
 
-        foreach (var r in shieldInAir.GetComponentsInChildren<Renderer>())
-            r.material.SetColor("_TintColor", ColorHelper.ColorFromHSV(CurrentHue, 1, 0.5f));
+        var addColor = ColorHelper.ColorFromHSV(CurrentHue, 1, currentPower * 0.5f);
+        var alphaColor = ColorHelper.ColorFromHSV(CurrentHue, 1, 0.5f);
+        alphaColor.a = currentPower;
 
-        sphere.renderer.material.SetColor("_Emission", ColorHelper.ColorFromHSV(CurrentHue, 1, 0.5f));
-        fountain.renderer.material.SetColor("_TintColor", ColorHelper.ColorFromHSV(CurrentHue, 1, 0.5f));
+        foreach (var r in shieldInAir.GetComponentsInChildren<Renderer>())
+            r.material.SetColor("_TintColor", addColor);
+
+        sphere.renderer.material.color = new Color(1, 1, 1, currentPower);
+        sphere.renderer.material.SetColor("_Emission", alphaColor);
+        fountain.renderer.material.SetColor("_TintColor", addColor);
         lightGo.light.color = ColorHelper.ColorFromHSV(CurrentHue, 1, 0.5f);
 
         // Defend against bullets

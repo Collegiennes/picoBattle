@@ -19,7 +19,7 @@ public class EnemyBullet : MonoBehaviour
 
     void Start()
     {
-        transform.position = Random.onUnitSphere.normalized * 400;
+        transform.position = Placement.Instance.GetCleanVector() * 400;
         direction = -transform.position.normalized;
         transform.LookAt(Vector3.zero);
 
