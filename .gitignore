@@ -4,13 +4,14 @@
 /Assembly-CSharp-vs.csproj
 /Assembly-CSharp-vs.csproj.user
 /picoBattle.userprefs
-/picoBattle-csharp.5.1.ReSharper.user
-/_ReSharper.picoBattle-csharp/
+/picoBattle-csharp.5.1.ReSharper.user
 /obj/
 /Assembly-CSharp.csproj
 /bin/
 /Temp/
+/Temp/**
 /picoBattle-csharp.sln
 /picoBattle-csharp.suo
 /picoBattle.sln
 *.csproj
+/_ReSharper.picoBattle-csharp
