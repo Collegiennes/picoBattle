@@ -18,3 +18,7 @@
 /picoBattle-csharp.5.1.ReSharper.user
 /Assembly-CSharp.pidb
 /picoBattle.userprefs
+*.suo
+*.sln
+/UnityVS.picoBattle.sln.DotSettings
+/_ReSharper.UnityVS.picoBattle
