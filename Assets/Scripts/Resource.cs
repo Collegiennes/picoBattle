@@ -14,11 +14,17 @@ public class Resource : Structure
         base.Reset();
 
         foreach (var c in GetComponentsInChildren<Collider>()) c.enabled = true;
-        foreach (var r in GetComponentsInChildren<Renderer>()) r.enabled = true;
+        foreach (var r in GetComponentsInChildren<Renderer>()) 
+            if (r.gameObject.name != "Inner" && r.gameObject.name != "Outer")
+            r.enabled = true;
 
         ChosenHue = null;
-        SphereChosen = false;
-        HideSpheres();
+        if (SphereChosen || highlighting)
+        {
+            SphereChosen = false;
+            HideSpheres();
+        }
+        highlighting = showing = false;
     }
 
     protected override void Start()

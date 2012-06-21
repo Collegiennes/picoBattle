@@ -1894,12 +1894,9 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3d219e4b09fb04442b6f306a40341134, type: 1}
   m_Name: 
-  WanIP: 
-  LanIP: 
   IsServer: 0
-  HostIP: 
-  ServerReady: 0
-  ClientReady: 0
+  IsClient: 0
+  IsRegistered: 0
   LocalMode: 0
   BulletTemplate: {fileID: 100002, guid: 93d59344eca85814e87544328a57343f, type: 2}
 --- !u!114 &96

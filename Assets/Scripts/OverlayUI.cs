@@ -23,9 +23,10 @@ public class OverlayUI : MonoBehaviour
         public Vector2 LastKnownLocation;
         public Vector3 LastArrow;
         public bool IsAI;
+        public HostData HostData;
     }
 
-    List<Enemy> Enemies;
+    readonly List<Enemy> Enemies = new List<Enemy>();
     Enemy ChosenEnemy;
 
     Material mat;
@@ -43,10 +44,15 @@ public class OverlayUI : MonoBehaviour
         mat.hideFlags = HideFlags.HideAndDontSave;
         mat.shader.hideFlags = HideFlags.HideAndDontSave;
 
-        Enemies = new List<Enemy>
-        {
-            new Enemy { Location = Random.onUnitSphere * 400, IsAI = true }
-        };
+        Enemies.Add(new Enemy { Location = Random.onUnitSphere * 400, IsAI = true });
+
+        Networking.Instance.HostsUpdated += UpdateStars;
+    }
+
+    void UpdateStars(IEnumerable<HostData> newHosts, IEnumerable<HostData> deletedHosts)
+    {
+        Enemies.RemoveAll(x => deletedHosts.Contains(x.HostData));
+        Enemies.AddRange(newHosts.Select(x => new Enemy { HostData = x, Location = Random.onUnitSphere * 400 }));
     }
 
     IEnumerator OnPostRender()
@@ -68,7 +74,7 @@ public class OverlayUI : MonoBehaviour
             EnemyUI(ChosenEnemy);
         }
         else
-            foreach (var e in Enemies)
+            foreach (var e in Enemies.Where(x => x.HostData == null || x.HostData.gameName != Networking.MyGuid))
                 EnemyUI(e);
 
         foreach (var b in ShieldGenerator.Instance.DefendingAgainst.Where(x => !x.IsAutoDestructed).Take(3))
@@ -89,9 +95,10 @@ public class OverlayUI : MonoBehaviour
                 if ((mousePos - e.LastKnownLocation).magnitude < 10)
                 {
                     AudioRouter.Instance.PlayShoot(Random.value * 360);
-                    GameFlow.State = GameState.ReadyToConnect;
+                    GameFlow.State = GameState.Connecting;
                     ChosenEnemy = e;
                     Networking.Instance.LocalMode = e.IsAI;
+                    Networking.Instance.ChosenHost = e.HostData;
                     break;
                 }
             }

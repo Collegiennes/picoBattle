@@ -10,15 +10,15 @@ using Random = UnityEngine.Random;
 
 class Networking : MonoBehaviour
 {
-    public const int Port = 10000;
-
     public static Networking Instance;
 
-    public string WanIP;
-    public string LanIP;
-    public bool IsServer;
-    public string HostIP;
-    public bool ServerReady, ClientReady;
+    public static readonly string MyGuid = new Guid().ToString();
+
+    const int Port = 10000;
+    const float HostsUpdateRate = 1;
+    const string GameType = "PicoBattle 2.0";
+
+    public bool IsServer, IsClient, IsRegistered;
     public bool LocalMode;
 
     string errorMessage;
@@ -26,6 +26,11 @@ class Networking : MonoBehaviour
     float? sinceAiSawShieldUpdate, aiOffenseReactionTime, aiHueToCounter, aiLastSeenShieldHue, aiLastSeenBulletHue;
     float sinceAiShot, aiShootCooldown, aiBulletSize;
     float aiAssaultHue;
+
+    public HostData ChosenHost;
+    public HostData[] Hosts;
+    float sinceUpdatedHosts;
+    public event Action<IEnumerable<HostData>, IEnumerable<HostData>> HostsUpdated;
 
     public GameObject BulletTemplate;
 
@@ -55,29 +60,9 @@ class Networking : MonoBehaviour
         }
     }
 
-    void Start()
+    void Awake()
     {
         Instance = this;
-        //WanIP = GetIP();
-        LanIP = Dns.GetHostAddresses(Dns.GetHostName()).First(x => x.AddressFamily == AddressFamily.InterNetwork).ToString();
-    }
-
-    static string GetIP()
-    {
-        try
-        {
-            string strIP;
-            using (var wc = new WebClient())
-            {
-                strIP = wc.DownloadString("http://checkip.dyndns.org");
-                strIP = (new Regex(@"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b")).Match(strIP).Value;
-            }
-            return strIP;
-        }
-        catch (Exception)
-        {
-            return null;
-        }
     }
 
     public static void RpcShootBullet(float power, float hue)
@@ -118,18 +103,6 @@ class Networking : MonoBehaviour
         Instance.networkView.RPC("UpdateEnemyHealth", RPCMode.Others, health);
     }
 
-    public static void TellReady()
-    {
-        if (Instance.IsServer) Instance.ServerReady = true; else Instance.ClientReady = true;
-        Instance.networkView.RPC("MarkReady", RPCMode.Others, Instance.IsServer);
-    }
-
-    [RPC]
-    public void MarkReady(bool server)
-    {
-        if (server) ServerReady = true; else ClientReady = true;
-    }
-
     void FixedUpdate()
     {
         currentEnemyHealth = Mathf.Lerp(currentEnemyHealth, enemyHealth, 0.1f);
@@ -142,9 +115,20 @@ class Networking : MonoBehaviour
     {
         switch (GameFlow.State)
         {
-            case GameState.ReadyToConnect:
-                if (HostIP.Length == 0)
-                    IsServer = true;
+            case GameState.RecreateServer:
+                CreateServer();
+                GameFlow.State = GameState.WaitingForChallenge;
+                break;
+
+            case GameState.WaitingForChallenge:
+                sinceUpdatedHosts += Time.deltaTime;
+                if (sinceUpdatedHosts > HostsUpdateRate)
+                    UpdateHosts();
+                break;
+
+            case GameState.Connecting:
+                MasterServer.UnregisterHost();
+                IsRegistered = false;
 
                 if (LocalMode)
                 {
@@ -164,24 +148,13 @@ class Networking : MonoBehaviour
                     aiOffenseReactionTime = Random.Range(5, 15);
 
                     Debug.Log("[AI] will power up shield in " + aiOffenseReactionTime.Value + " seconds");
-                }
 
-                if (IsServer)
-                {
-                    CreateServer();
-                    //GameFlow.State = GameState.WaitingOrConnecting;
                     GameFlow.State = GameState.Gameplay;
                 }
                 else
                 {
+                    CloseServer();
                     ConnectToServer();
-                }
-                break;
-
-            case GameState.Syncing:
-                if (ServerReady && ClientReady)
-                {
-                    GameFlow.State = GameState.Gameplay;
                 }
                 break;
 
@@ -190,15 +163,40 @@ class Networking : MonoBehaviour
                     AI();
 
                 if (Input.GetKeyDown(KeyCode.Escape))
-                {
-                    GameFlow.State = GameState.Login;
-                    ShieldGenerator.Instance.Reset();
-                    Cannon.Instance.Reset();
-                    Placement.Instance.Reset();
-                    MousePicking.Instance.Reset();
-                }
+                    Reset();
                 break;
         }
+    }
+
+    void OnApplicationQuit()
+    {
+        if (IsServer) CloseServer();
+        if (IsClient) Network.Disconnect();
+        if (IsRegistered) MasterServer.UnregisterHost();
+    }
+
+    void UpdateHosts()
+    {
+        MasterServer.RequestHostList(GameType);
+
+        var oldHosts = Hosts;
+        var newHosts = MasterServer.PollHostList();
+
+        Hosts = newHosts;
+
+        HostsUpdated(newHosts.Except(oldHosts, HostDataEqualityComparer.Default), oldHosts.Except(newHosts, HostDataEqualityComparer.Default));
+
+        sinceUpdatedHosts = 0;
+    }
+
+    public void Reset()
+    {
+        GameFlow.State = GameState.RecreateServer;
+        ShieldGenerator.Instance.Reset();
+        Cannon.Instance.Reset();
+        Placement.Instance.Reset();
+        MousePicking.Instance.Reset();
+        LocalMode = false;
     }
 
     void AI()
@@ -233,24 +231,32 @@ class Networking : MonoBehaviour
 
     void CreateServer()
     {
-        var result = Network.InitializeServer(2, Port, false);
-        if (result == NetworkConnectionError.NoError)
-        {
-            //PeerType = NetworkPeerType.Server;
-        }
-        else
-        {
-            //PeerType = NetworkPeerType.Disconnected;
-            errorMessage = "Couldn't create server (reason : " + result + ")";
-            Debug.Log(errorMessage);
-        }
+        if (IsClient)
+            Network.Disconnect();
+
+        if (!IsServer)
+            Network.InitializeServer(1, Port, true);
+
+        if (!IsRegistered)
+            MasterServer.RegisterHost(GameType, MyGuid);
+
+        HostsUpdated(Enumerable.Empty<HostData>(), Hosts ?? Enumerable.Empty<HostData>());
+        Hosts = new HostData[0];
+        sinceUpdatedHosts = HostsUpdateRate;
+
+        IsServer = IsRegistered = true;
+        IsClient = false;
+    }
+
+    void CloseServer()
+    {
+        Network.Disconnect();
+        IsServer = false;
     }
 
     void OnPlayerConnected(NetworkPlayer player)
     {
-        GameFlow.State = GameState.ReadyToPlay;
-
-        Debug.Log("Player connected : game can start!");
+        GameFlow.State = GameState.Gameplay;
     }
 
     void OnPlayerDisconnected(NetworkPlayer player)
@@ -258,7 +264,7 @@ class Networking : MonoBehaviour
         Network.RemoveRPCs(player);
         Network.DestroyPlayerObjects(player);
 
-        Application.Quit();
+        Reset();
     }
 
     #endregion
@@ -267,47 +273,27 @@ class Networking : MonoBehaviour
 
     void ConnectToServer()
     {
-        Debug.Log("connection attempt will start");
+        ChosenHost.useNat = true;
+        Network.Connect(ChosenHost);
 
-        var result = Network.Connect(HostIP, Port);
-        if (result == NetworkConnectionError.NoError)
-        {
-            //PeerType = NetworkPeerType.Connecting;
-        }
-        else
-        {
-            //PeerType = NetworkPeerType.Disconnected;
-            errorMessage = "Couldn't connect to server (reason : " + result + ") -- will retry in 2 seconds...";
-            Wait.Until(t => t >= 2, () => { if (GameFlow.State == GameState.WaitingOrConnecting) GameFlow.State = GameState.ReadyToConnect; });
-            Debug.Log(errorMessage);
-        }
-
-        GameFlow.State = GameState.WaitingOrConnecting;
+        GameFlow.State = GameState.Connecting;
     }
 
     void OnFailedToConnect(NetworkConnectionError error)
     {
-        //PeerType = NetworkPeerType.Disconnected;
-        errorMessage = "Couldn't connect to server (reason : " + error + ") -- will retry in 2 seconds...";
-        Debug.Log(errorMessage);
-
-        Wait.Until(t => t >= 2, () => { if (GameFlow.State == GameState.WaitingOrConnecting) GameFlow.State = GameState.ReadyToConnect; });
+        Debug.Log("Couldn't connect to server (reason : " + error);
+        Reset();
     }
 
     void OnConnectedToServer()
     {
-        //PeerType = NetworkPeerType.Client;
-        GameFlow.State = GameState.ReadyToPlay;
-        Debug.Log("Connection successful : game starting!");
+        GameFlow.State = GameState.Gameplay;
+        IsClient = true;
     }
 
     void OnDisconnectedFromServer(NetworkDisconnection info)
     {
-        //PeerType = NetworkPeerType.Disconnected;
-        errorMessage = "Disconnected from server (reason : " + info + ")";
-        // TODO : prompt for reconnection?
-
-        Application.Quit();
+        Reset();
     }
 
     #endregion
@@ -393,5 +379,21 @@ class Networking : MonoBehaviour
     public void UpdateEnemyHealth(float health)
     {
         EnemyHealth = health;
+    }
+}
+
+public class HostDataEqualityComparer : IEqualityComparer<HostData>
+{
+    public static HostDataEqualityComparer Default = new HostDataEqualityComparer();
+
+    public bool Equals(HostData x, HostData y)
+    {
+        if (x == null) return y == null;
+        if (y == null) return false;
+        return x.guid == y.guid;
+    }
+    public int GetHashCode(HostData obj)
+    {
+        return obj.guid.GetHashCode();
     }
 }
