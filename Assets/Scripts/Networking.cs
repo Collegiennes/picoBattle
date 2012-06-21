@@ -105,6 +105,7 @@ class Networking : MonoBehaviour
 
     public static void RpcUpdateHealth(float health)
     {
+        Debug.Log("Sending new health to enemy : " + health);
         Instance.networkView.RPC("UpdateEnemyHealth", RPCMode.Others, health);
     }
 
@@ -113,7 +114,11 @@ class Networking : MonoBehaviour
         currentEnemyHealth = Mathf.Lerp(currentEnemyHealth, enemyHealth, 0.1f);
 
         if (enemyShieldHue.HasValue)
+        {
             currentEnemyShieldHue = Mathf.LerpAngle(currentEnemyShieldHue, enemyShieldHue.Value, 0.1f);
+            while (currentEnemyShieldHue < 0) currentEnemyShieldHue += 360;
+            while (currentEnemyShieldHue > 360) currentEnemyShieldHue -= 360;
+        }
     }
 
     void Update()
@@ -208,6 +213,8 @@ class Networking : MonoBehaviour
         Cannon.Instance.Reset();
         Placement.Instance.Reset();
         MousePicking.Instance.Reset();
+        EnemyHealth = 500;
+        EnemyShieldHue = null;
         LocalMode = false;
     }
 
@@ -276,6 +283,7 @@ class Networking : MonoBehaviour
         IsClient = false;
         IsServer = true;
         ChosenHost = Hosts.First(x => x.guid == player.guid);
+
 
         GameFlow.State = GameState.Gameplay;
     }
@@ -402,6 +410,7 @@ class Networking : MonoBehaviour
     [RPC]
     public void UpdateEnemyHealth(float health)
     {
+        Debug.Log("RPC updated enemy health to " + health);
         EnemyHealth = health;
     }
 }

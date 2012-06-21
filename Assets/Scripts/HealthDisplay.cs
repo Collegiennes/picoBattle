@@ -35,6 +35,9 @@ class HealthDisplay : MonoBehaviour
         currentOpacity = Mathf.Lerp(currentOpacity, opacity, 0.1f);
 
         currentHue = Mathf.LerpAngle(currentHue, ShieldGenerator.Instance.Hue, 0.1f);
+        while (currentHue < 0) currentHue += 360;
+        while (currentHue > 360) currentHue -= 360;
+
         currentSat = Mathf.Lerp(currentSat, powered ? 1 : 0, 0.1f);
 
         var color = ColorHelper.ColorFromHSV(currentHue, currentSat, currentOpacity) * 0.5f;

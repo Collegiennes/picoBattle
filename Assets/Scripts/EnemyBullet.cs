@@ -97,7 +97,7 @@ public class EnemyBullet : MonoBehaviour
             ShieldGenerator.Instance.Health = Mathf.Max(0, ShieldGenerator.Instance.Health);
             if (ShieldGenerator.Instance.Health <= 0)
                 ShieldGenerator.Instance.FinishGame();
-            Debug.Log("player health is now " + ShieldGenerator.Instance.Health);
+            //Debug.Log("player health is now " + ShieldGenerator.Instance.Health);
             Networking.RpcUpdateHealth(ShieldGenerator.Instance.Health);
             IsAutoDestructed = true;
 

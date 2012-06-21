@@ -89,6 +89,8 @@ public class ShieldGenerator : Structure
         fountain.renderer.material.SetColor("_TintColor", addColor);
         lightGo.light.color = ColorHelper.ColorFromHSV(CurrentHue, 1, 0.5f);
 
+        //Debug.Log(Hues.Count + " structures connected, avg hue is " + Hue);
+
         // Defend against bullets
         if (!IsPowered || GameFlow.State != GameState.Gameplay) return;
         for (int i = DefendingAgainst.Count - 1; i >= 0; i--)

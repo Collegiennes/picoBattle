@@ -88,6 +88,8 @@ public class Capsule : Structure
     void Update()
     {
         CurrentHue = Mathf.LerpAngle(CurrentHue, Hue, 0.1f);
+        while (CurrentHue < 0) CurrentHue += 360;
+        while (CurrentHue > 360) CurrentHue -= 360;
         capsule.renderer.material.SetColor("_Emission", ColorHelper.ColorFromHSV(CurrentHue, 1, 0.5f));
     }
 
