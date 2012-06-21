@@ -51,6 +51,9 @@ public class OverlayUI : MonoBehaviour
 
     void UpdateStars(IEnumerable<HostData> newHosts, IEnumerable<HostData> deletedHosts)
     {
+        if (newHosts.Count() != 0 || deletedHosts.Count() != 0)
+            Debug.Log("Updated hosts : " + newHosts.Count() + " new, " + deletedHosts.Count() + " deleted");
+
         Enemies.RemoveAll(x => deletedHosts.Contains(x.HostData));
         Enemies.AddRange(newHosts.Select(x => new Enemy { HostData = x, Location = Random.onUnitSphere * 400 }));
     }

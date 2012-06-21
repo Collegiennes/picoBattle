@@ -15,7 +15,7 @@ class Networking : MonoBehaviour
     public static readonly string MyGuid = new Guid().ToString();
 
     const int Port = 10000;
-    const float HostsUpdateRate = 1;
+    const float HostsUpdateRate = 2;
     const string GameType = "PicoBattle 2.0";
 
     public bool IsServer, IsClient, IsRegistered;
@@ -127,8 +127,11 @@ class Networking : MonoBehaviour
                 break;
 
             case GameState.Connecting:
-                MasterServer.UnregisterHost();
-                IsRegistered = false;
+                if (IsRegistered)
+                {
+                    MasterServer.UnregisterHost();
+                    IsRegistered = false;
+                }
 
                 if (LocalMode)
                 {
@@ -242,7 +245,7 @@ class Networking : MonoBehaviour
 
         HostsUpdated(Enumerable.Empty<HostData>(), Hosts ?? Enumerable.Empty<HostData>());
         Hosts = new HostData[0];
-        sinceUpdatedHosts = HostsUpdateRate;
+        sinceUpdatedHosts = 0;
 
         IsServer = IsRegistered = true;
         IsClient = false;
