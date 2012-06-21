@@ -54,12 +54,16 @@ public class OverlayUI : MonoBehaviour
         if (newHosts.Count() != 0 || deletedHosts.Count() != 0)
         {
             Debug.Log("Updated hosts : " + newHosts.Count() + " new, " + deletedHosts.Count() + " deleted");
+
             int i = 0;
             foreach (var h in newHosts)
                 Debug.Log("New host #" + i++ + " : guid = " + h.guid + ", ip = " + h.ip.Aggregate("", (a, b) => a + (a == "" ? "" : ".") + b) + ", gameName = " + h.gameName);
+            i = 0;
+            foreach (var h in newHosts)
+                Debug.Log("Deleted host #" + i++ + " : guid = " + h.guid + ", ip = " + h.ip.Aggregate("", (a, b) => a + (a == "" ? "" : ".") + b) + ", gameName = " + h.gameName);
         }
 
-        Enemies.RemoveAll(x => deletedHosts.Contains(x.HostData));
+        Enemies.RemoveAll(x => deletedHosts.Any(y => y.guid == x.HostData.guid));
         Enemies.AddRange(newHosts.Select(x => new Enemy { HostData = x, Location = Random.onUnitSphere * 400 }));
     }
 

@@ -131,7 +131,7 @@ class Networking : MonoBehaviour
                     UpdateHosts();
                 break;
 
-            case GameState.Connecting:
+            case GameState.ReadyToConnect:
                 if (IsRegistered)
                 {
                     MasterServer.UnregisterHost();
@@ -164,6 +164,10 @@ class Networking : MonoBehaviour
                     CloseServer();
                     ConnectToServer();
                 }
+                break;
+
+            case GameState.Connecting:
+                // ?
                 break;
 
             case GameState.Gameplay:
@@ -264,6 +268,14 @@ class Networking : MonoBehaviour
 
     void OnPlayerConnected(NetworkPlayer player)
     {
+        if (IsRegistered)
+        {
+            MasterServer.UnregisterHost();
+            IsRegistered = false;
+        }
+        IsClient = false;
+        IsServer = true;
+
         GameFlow.State = GameState.Gameplay;
     }
 
@@ -284,7 +296,7 @@ class Networking : MonoBehaviour
         ChosenHost.useNat = true;
         Network.Connect(ChosenHost);
 
-        GameFlow.State = GameState.Connecting;
+        GameFlow.State = GameState.ReadyToConnect;
     }
 
     void OnFailedToConnect(NetworkConnectionError error)

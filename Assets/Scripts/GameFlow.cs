@@ -5,5 +5,5 @@
 
 public enum GameState
 {
-    RecreateServer, WaitingForChallenge, Connecting, Gameplay, Won, Lost
+    RecreateServer, WaitingForChallenge, ReadyToConnect, Connecting, Gameplay, Won, Lost
 }
