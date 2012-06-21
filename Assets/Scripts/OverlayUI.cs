@@ -63,7 +63,7 @@ public class OverlayUI : MonoBehaviour
                 Debug.Log("Deleted host #" + i++ + " : guid = " + h.guid + ", ip = " + h.ip.Aggregate("", (a, b) => a + (a == "" ? "" : ".") + b) + ", gameName = " + h.gameName);
         }
 
-        Enemies.RemoveAll(x => deletedHosts.Any(y => y.guid == x.HostData.guid));
+        Enemies.RemoveAll(x => deletedHosts.Any(y => x.HostData != null && y.guid == x.HostData.guid));
         Enemies.AddRange(newHosts.Select(x => new Enemy { HostData = x, Location = Random.onUnitSphere * 400 }));
     }
 
