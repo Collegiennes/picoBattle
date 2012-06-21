@@ -153,7 +153,7 @@ public class ArcLink : MonoBehaviour
         if (fromResouce != null)
             fromResouce.Reset();
 
-        To.GetComponent<Structure>().UnlinkHue(Hue);
+        To.GetComponent<Structure>().UnlinkHue(From.GetComponent<Structure>());
         From.GetComponent<Structure>().LinkTo = null;
         IsUnlinked = true;
 

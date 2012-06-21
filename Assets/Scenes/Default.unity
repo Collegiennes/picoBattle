@@ -1900,6 +1900,7 @@ MonoBehaviour:
   HostIP: 
   ServerReady: 0
   ClientReady: 0
+  LocalMode: 0
   BulletTemplate: {fileID: 100002, guid: 93d59344eca85814e87544328a57343f, type: 2}
 --- !u!114 &96
 MonoBehaviour:

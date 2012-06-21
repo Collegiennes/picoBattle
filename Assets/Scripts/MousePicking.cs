@@ -23,21 +23,21 @@ public class MousePicking : MonoBehaviour
     public readonly List<Structure> Structures = new List<Structure>();
     public readonly List<ArcLink> Links = new List<ArcLink>();
 
+    public static MousePicking Instance;
+
 	void Start()
 	{
+        Instance = this;
+
         //Gamepads = GamepadsManager.Instance;
 	    Mouse = MouseManager.Instance;
 	    Camera = Camera.main;
 	}
 
-    void Reset()
+    public void Reset()
     {
-        foreach (var s in Structures)
-            Destroy(s.gameObject);
-        Structures.Clear();
-
-        foreach (var l in Links)
-            Destroy(l.gameObject);
+        foreach (var l in Links.ToArray())
+            l.Unlink();
         Links.Clear();
     }
 
@@ -255,8 +255,6 @@ public class MousePicking : MonoBehaviour
 
                     if (nearestShield != null)
                     {
-                        nearestShield.LinkHue(CurrentLink.GetComponent<ArcLink>().Hue);
-
                         var s = CurrentLink.GetComponent<ArcLink>().From.GetComponent<Structure>();
                         if (s is Resource)
                         {
@@ -267,11 +265,11 @@ public class MousePicking : MonoBehaviour
                         CurrentLink.GetComponent<ArcLink>().To = nearestObject;
                         nearestShield.LinkFrom = CurrentLink.GetComponent<ArcLink>();
                         Links.Add(CurrentLink.GetComponent<ArcLink>());
+
+                        nearestShield.LinkHue(CurrentLink.GetComponent<ArcLink>().From.GetComponent<Structure>());
                     }
                     else if (nearestCannon != null)
                     {
-                        nearestCannon.LinkHue(CurrentLink.GetComponent<ArcLink>().Hue);
-
                         var s = CurrentLink.GetComponent<ArcLink>().From.GetComponent<Structure>();
                         if (s is Resource)
                         {
@@ -282,11 +280,11 @@ public class MousePicking : MonoBehaviour
                         CurrentLink.GetComponent<ArcLink>().To = nearestObject;
                         nearestCannon.LinkFrom = CurrentLink.GetComponent<ArcLink>();
                         Links.Add(CurrentLink.GetComponent<ArcLink>());
+
+                        nearestCannon.LinkHue(CurrentLink.GetComponent<ArcLink>().From.GetComponent<Structure>());
                     }
                     else if (nearestCapsule != null)
                     {
-                        nearestCapsule.LinkHue(CurrentLink.GetComponent<ArcLink>().Hue);
-
                         CurrentLink.GetComponent<ArcLink>().To = nearestObject;
                         nearestCapsule.LinkFrom = CurrentLink.GetComponent<ArcLink>();
                         Links.Add(CurrentLink.GetComponent<ArcLink>());
@@ -297,6 +295,8 @@ public class MousePicking : MonoBehaviour
                             (s as Resource).IsEmitting = true;
                             (s as Resource).ChooseSphere(CurrentLink.GetComponent<ArcLink>().Hue);
                         }
+
+                        nearestCapsule.LinkHue(CurrentLink.GetComponent<ArcLink>().From.GetComponent<Structure>());
                     }
                     else
                     {
@@ -316,7 +316,7 @@ public class MousePicking : MonoBehaviour
                                             Quaternion.LookRotation(Vector3.Normalize(p)) *
                                             Quaternion.AngleAxis(90, Vector3.right));
                             go.transform.parent = transform;
-                            go.GetComponent<Capsule>().LinkHue(CurrentLink.GetComponent<ArcLink>().Hue);
+                            
                             go.GetComponent<Structure>().LinkFrom = CurrentLink.GetComponent<ArcLink>();
 
                             CurrentLink.GetComponent<ArcLink>().To = go;
@@ -327,6 +327,8 @@ public class MousePicking : MonoBehaviour
                                 (s as Resource).IsEmitting = true;
                                 (s as Resource).ChooseSphere(CurrentLink.GetComponent<ArcLink>().Hue);
                             }
+
+                            go.GetComponent<Capsule>().LinkHue(CurrentLink.GetComponent<ArcLink>().From.GetComponent<Structure>());
 
                             Links.Add(CurrentLink.GetComponent<ArcLink>());
 

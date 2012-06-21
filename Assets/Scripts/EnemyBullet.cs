@@ -16,7 +16,6 @@ public class EnemyBullet : MonoBehaviour
     TrailRenderer trailRenderer;
 
     float SinceEmitDestruct;
-    float sinceStarted;
 
     void Start()
     {
@@ -32,8 +31,6 @@ public class EnemyBullet : MonoBehaviour
     void Update()
     {
         if (GameFlow.State != GameState.Gameplay) return;
-
-        sinceStarted += Time.deltaTime;
 
         if (IsAutoDestructed)
         {
@@ -108,8 +105,6 @@ public class EnemyBullet : MonoBehaviour
             go.GetComponent<PlanetImpact>().Direction = direction;
             go.GetComponent<PlanetImpact>().Power = (Power / 4f) * 0.5f + 0.5f;
             go.GetComponent<PlanetImpact>().BulletHue = Hue;
-
-            Debug.Log("Since start : " + sinceStarted);
 
             renderer.enabled = false;
             transform.position = -direction * 30;

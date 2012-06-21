@@ -29,12 +29,14 @@ public class Capsule : Structure
         });
     }
 
-    public override void LinkHue(float hue)
+    public override void LinkHue(Structure hue)
     {
         if (Hues.Count > 0)
             OldHue = Hue;
 
         base.LinkHue(hue);
+
+        Debug.Log("Linked hue " + hue.Hue + ", count = " + Hues.Count);
 
         if (Hues.Count == 1)
         {
@@ -46,16 +48,15 @@ public class Capsule : Structure
         PropagateHue();
     }
 
-    public override void UnlinkHue(float hue)
+    public override void UnlinkHue(Structure hue)
     {
         if (Hues.Count > 0)
-            OldHue = Hue;
+            OldHue = CurrentHue;
 
         base.UnlinkHue(hue);
 
         if (Hues.Count == 0)
         {
-            Hues.Add(OldHue);
             capsule.transform.localPosition = -2500 * Vector3.up;
             Wait.Until(t =>
             {
@@ -73,8 +74,6 @@ public class Capsule : Structure
                     LinkTo.Unlink();
 
                     //Structures.Add(or);
-                    foreach (var c in or.GetComponentsInChildren<Collider>()) c.enabled = true;
-                    foreach (var r in or.GetComponentsInChildren<Renderer>()) r.enabled = true;
                     or.Reset();
                 }
 
@@ -108,8 +107,8 @@ public class Capsule : Structure
 
         if (destinationCapsule != null && !PropagationList.Contains(destinationCapsule))
         {
-            destinationCapsule.Hues.Remove(OldHue);
-            destinationCapsule.Hues.Add(Hue);
+            //destinationCapsule.Hues.Remove(OldHue);
+            //destinationCapsule.Hues.Add(Hue);
             destinationCapsule.PropagateHue();
         }
         else if (destinationCannon != null)
@@ -122,5 +121,10 @@ public class Capsule : Structure
         }
 
         PropagationList.Remove(this);
+    }
+
+    public override float Hue
+    {
+        get { return Hues.Count == 0 ? OldHue : base.Hue; }
     }
 }

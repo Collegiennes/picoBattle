@@ -125,23 +125,6 @@ GameObject:
 --- !u!1002 &100011
 EditorExtensionImpl:
   serializedVersion: 6
---- !u!1 &100012
-GameObject:
-  m_ObjectHideFlags: 1
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 100100000}
-  serializedVersion: 3
-  m_Component:
-  - 4: {fileID: 400012}
-  - 33: {fileID: 3300010}
-  - 23: {fileID: 2300010}
-  m_Layer: 0
-  m_Name: ____
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
 --- !u!1002 &100013
 EditorExtensionImpl:
   serializedVersion: 6
@@ -293,18 +276,6 @@ Transform:
 --- !u!1002 &400011
 EditorExtensionImpl:
   serializedVersion: 6
---- !u!4 &400012
-Transform:
-  m_ObjectHideFlags: 1
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 100100000}
-  m_GameObject: {fileID: 100012}
-  m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_Children: []
-  m_Father: {fileID: 400014}
 --- !u!1002 &400013
 EditorExtensionImpl:
   serializedVersion: 6
@@ -319,7 +290,6 @@ Transform:
   m_LocalScale: {x: .109028488, y: .109028488, z: .109028488}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_Children:
-  - {fileID: 400012}
   - {fileID: 400018}
   m_Father: {fileID: 400004}
 --- !u!1002 &400015
@@ -455,24 +425,6 @@ Renderer:
 --- !u!1002 &2300009
 EditorExtensionImpl:
   serializedVersion: 6
---- !u!23 &2300010
-Renderer:
-  m_ObjectHideFlags: 1
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 100100000}
-  m_GameObject: {fileID: 100012}
-  m_Enabled: 0
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_LightmapIndex: 255
-  m_LightmapTilingOffset: {x: 1, y: 1, z: 0, w: 0}
-  m_Materials:
-  - {fileID: 2100000, guid: bb3de690dce544ab499f53b807fddb6e, type: 2}
-  m_SubsetIndices: 
-  m_StaticBatchRoot: {fileID: 0}
-  m_UseLightProbes: 0
-  m_LightProbeAnchor: {fileID: 0}
-  m_ScaleInLightmap: 1
 --- !u!1002 &2300011
 EditorExtensionImpl:
   serializedVersion: 6
@@ -544,13 +496,6 @@ MeshFilter:
 --- !u!1002 &3300009
 EditorExtensionImpl:
   serializedVersion: 6
---- !u!33 &3300010
-MeshFilter:
-  m_ObjectHideFlags: 1
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 100100000}
-  m_GameObject: {fileID: 100012}
-  m_Mesh: {fileID: 4300000, guid: 45f7a35a163f246f98b6305cd159fa24, type: 3}
 --- !u!1002 &3300011
 EditorExtensionImpl:
   serializedVersion: 6

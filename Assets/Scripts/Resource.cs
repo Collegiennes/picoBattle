@@ -5,11 +5,18 @@ public class Resource : Structure
 {
     public GameObject Inner, Outer, Collider;
     public float InnerHue, OuterHue;
+    public float? ChosenHue;
     bool SphereChosen;
     bool showing, hiding, highlighting;
 
-    public void Reset()
+    public override void Reset()
     {
+        base.Reset();
+
+        foreach (var c in GetComponentsInChildren<Collider>()) c.enabled = true;
+        foreach (var r in GetComponentsInChildren<Renderer>()) r.enabled = true;
+
+        ChosenHue = null;
         SphereChosen = false;
         HideSpheres();
     }
@@ -71,6 +78,8 @@ public class Resource : Structure
     public void ChooseSphere(float hue)
     {
         SphereChosen = true;
+
+        ChosenHue = hue;
 
         if (hue == InnerHue)
         {
@@ -139,5 +148,10 @@ public class Resource : Structure
             }
             hiding = false;
         });
+    }
+
+    public override float Hue
+    {
+        get { return ChosenHue.HasValue ? ChosenHue.Value : 0; }
     }
 }

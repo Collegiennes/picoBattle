@@ -23,6 +23,15 @@ public class Cannon : Structure
         get { return Hues.Count > 0; }
     }
 
+    public override void Reset()
+    {
+        base.Reset();
+        AccumulatedPower = 0;
+
+        foreach (var o in FindObjectsOfType(typeof(LaunchingBullet)))
+            Destroy((o as LaunchingBullet).gameObject);
+    }
+
     protected override void Start()
     {
         name = "Cannon";
@@ -40,7 +49,7 @@ public class Cannon : Structure
         ray1.renderer.enabled = ray2.renderer.enabled = bullet.renderer.enabled = false;
     }
 
-    public override void LinkHue(float hue)
+    public override void LinkHue(Structure hue)
     {
         base.LinkHue(hue);
 
@@ -59,7 +68,7 @@ public class Cannon : Structure
         }
     }
 
-    public override void UnlinkHue(float hue)
+    public override void UnlinkHue(Structure hue)
     {
         base.UnlinkHue(hue);
 

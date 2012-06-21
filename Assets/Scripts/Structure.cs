@@ -8,7 +8,14 @@ public class Structure : MonoBehaviour
     public bool IsEmitting;
 
     public ArcLink LinkFrom, LinkTo;
-    public List<float> Hues;
+    public readonly List<Structure> Hues = new List<Structure>();
+
+    public virtual void Reset()
+    {
+        IsEmitting = false;
+        LinkFrom = LinkTo = null;
+        Hues.Clear();
+    }
 
     protected virtual void Start()
     {
@@ -20,14 +27,15 @@ public class Structure : MonoBehaviour
         transform.parent.BroadcastMessage("StructureRemoved", this);
     }
 
-    public virtual void LinkHue(float hue)
+    public virtual void LinkHue(Structure hue)
     {
         Hues.Add(hue);
     }
 
-    public virtual void UnlinkHue(float hue)
+    public virtual void UnlinkHue(Structure hue)
     {
-        Hues.Remove(hue);
+        if (!Hues.Remove(hue))
+            Hues.RemoveAt(0);
     }
 
     public virtual void OnBullet(Bullet bullet)
@@ -36,15 +44,16 @@ public class Structure : MonoBehaviour
             LinkTo.SpawnBullet();
     }
 
-    public float Hue
+    public virtual float Hue
     {
         get
         {
             if (Hues.Count == 0) return 0;
+            if (Hues.Count == 1) return Hues[0].Hue;
 
             Vector2 acc = Vector2.zero;
             foreach (var h in Hues)
-                acc += new Vector2(Mathf.Cos(Mathf.Deg2Rad * h), Mathf.Sin(Mathf.Deg2Rad * h));
+                acc += new Vector2(Mathf.Cos(Mathf.Deg2Rad * h.Hue), Mathf.Sin(Mathf.Deg2Rad * h.Hue));
             acc.Normalize();
             var angle = Mathf.Rad2Deg * Mathf.Atan2(acc.y, acc.x);
             if (angle < 0) angle += 360;

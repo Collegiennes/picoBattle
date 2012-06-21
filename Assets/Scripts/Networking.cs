@@ -184,12 +184,20 @@ class Networking : MonoBehaviour
                     GameFlow.State = GameState.Gameplay;
                 }
                 break;
-        }
 
-        if (GameFlow.State == GameState.Gameplay)
-        {
-            if (LocalMode)
-                AI();
+            case GameState.Gameplay:
+                if (LocalMode)
+                    AI();
+
+                if (Input.GetKeyDown(KeyCode.Escape))
+                {
+                    GameFlow.State = GameState.Login;
+                    ShieldGenerator.Instance.Reset();
+                    Cannon.Instance.Reset();
+                    Placement.Instance.Reset();
+                    MousePicking.Instance.Reset();
+                }
+                break;
         }
     }
 
@@ -200,8 +208,9 @@ class Networking : MonoBehaviour
             sinceAiSawShieldUpdate += Time.deltaTime;
             if (sinceAiSawShieldUpdate.Value > aiOffenseReactionTime)
             {
-                Debug.Log("[AI] reacting to shield change");
-                aiAssaultHue = RandomHelper.Between(aiHueToCounter.Value - 60, aiHueToCounter.Value + 60) % 360;
+                aiAssaultHue = RandomHelper.Between(aiHueToCounter.Value - 90, aiHueToCounter.Value + 90) % 360;
+                if (aiAssaultHue < 0) aiAssaultHue += 360;
+                Debug.Log("[AI] reacting to shield change with " + aiAssaultHue);
                 Instance.aiBulletSize = Random.Range(1, 3);
                 Instance.aiShootCooldown = Random.Range(Instance.aiShootCooldown, 10);
                 aiHueToCounter = null;
@@ -314,8 +323,10 @@ class Networking : MonoBehaviour
                 Debug.Log("[AI] will react to bullet hue " + hue + " in " + defenseReactionTime);
                 Wait.Until(t => t > defenseReactionTime, () =>
                 {
-                    Debug.Log("[AI] reacting to bullet hue " + hue);
-                    UpdateEnemyShieldHue(RandomHelper.Between(hue - 60, hue + 60) % 360);
+                    var newHue = RandomHelper.Between(hue - 30, hue + 30) % 360;
+                    if (newHue < 0) newHue += 360;
+                    Debug.Log("[AI] reacting to bullet hue " + hue + " with " + newHue);
+                    UpdateEnemyShieldHue(newHue);
                 }, true);
 
                 aiLastSeenBulletHue = hue;

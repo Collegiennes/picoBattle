@@ -5,7 +5,6 @@ using UnityEngine;
 public class ShieldGenerator : Structure
 {
     public float CurrentHue;
-    float TotalPower;
 
     public float Health;
     public float CurrentHealth;
@@ -21,6 +20,19 @@ public class ShieldGenerator : Structure
     }
     float currentPower;
 
+    public override void Reset()
+    {
+        base.Reset();
+
+        foreach (var da in DefendingAgainst)
+        {
+            if (!da.IsAutoDestructed)
+                Destroy(da.gameObject);
+        }
+        DefendingAgainst.Clear();
+        CurrentHealth = Health = 500;
+    }
+
     protected override void Start()
     {
         base.Start();
@@ -31,16 +43,13 @@ public class ShieldGenerator : Structure
 
         CurrentHealth = Health = 500;
 
-        //EnemyHue = 25;
-        //EnemyHealth = 500;
-
         lightGo = gameObject.FindChild("Point light");
         sphere = gameObject.FindChild("shieldgenerator").FindChild("Sphere");
         fountain = gameObject.FindChild("shieldgenerator").FindChild("Shield");
         shieldInAir = gameObject.FindChild("Shield");
     }
 
-    public override void LinkHue(float hue)
+    public override void LinkHue(Structure hue)
     {
         base.LinkHue(hue);
 
@@ -81,7 +90,7 @@ public class ShieldGenerator : Structure
         lightGo.light.color = ColorHelper.ColorFromHSV(CurrentHue, 1, 0.5f);
 
         // Defend against bullets
-        if (!IsPowered) return;
+        if (!IsPowered || GameFlow.State != GameState.Gameplay) return;
         for (int i = DefendingAgainst.Count - 1; i >= 0; i--)
         {
             var da = DefendingAgainst[i];

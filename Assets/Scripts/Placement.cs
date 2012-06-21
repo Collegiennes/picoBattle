@@ -35,8 +35,14 @@ class Placement : MonoBehaviour
 
     public void Reset()
     {
-        foreach (var r in Resources)
-            Destroy(r);
+        foreach (var go in Resources)
+        {
+            var r = go.GetComponent<Resource>();
+            r.Reset();
+        }
+
+        foreach (var o in FindObjectsOfType(typeof(Bullet)))
+            Destroy((o as Bullet).gameObject);
     }
     
     void Place()
