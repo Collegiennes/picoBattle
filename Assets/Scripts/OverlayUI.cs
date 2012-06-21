@@ -59,7 +59,7 @@ public class OverlayUI : MonoBehaviour
             foreach (var h in newHosts)
                 Debug.Log("New host #" + i++ + " : guid = " + h.guid + ", ip = " + h.ip.Aggregate("", (a, b) => a + (a == "" ? "" : ".") + b) + ", gameName = " + h.gameName);
             i = 0;
-            foreach (var h in newHosts)
+            foreach (var h in deletedHosts)
                 Debug.Log("Deleted host #" + i++ + " : guid = " + h.guid + ", ip = " + h.ip.Aggregate("", (a, b) => a + (a == "" ? "" : ".") + b) + ", gameName = " + h.gameName);
         }
 
@@ -107,7 +107,7 @@ public class OverlayUI : MonoBehaviour
                 if ((mousePos - e.LastKnownLocation).magnitude < 10)
                 {
                     AudioRouter.Instance.PlayShoot(Random.value * 360);
-                    GameFlow.State = GameState.Connecting;
+                    GameFlow.State = GameState.ReadyToConnect;
                     ChosenEnemy = e;
                     Networking.Instance.LocalMode = e.IsAI;
                     Networking.Instance.ChosenHost = e.HostData;
