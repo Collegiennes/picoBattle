@@ -34,8 +34,7 @@ public class Structure : MonoBehaviour
 
     public virtual void UnlinkHue(Structure hue)
     {
-        if (!Hues.Remove(hue))
-            Hues.RemoveAt(0);
+        Hues.Remove(hue);
     }
 
     public virtual void OnBullet(Bullet bullet)

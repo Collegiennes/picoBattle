@@ -27,7 +27,6 @@ public class OverlayUI : MonoBehaviour
     }
 
     readonly List<Enemy> Enemies = new List<Enemy>();
-    Enemy ChosenEnemy;
 
     Material mat;
     float lastPower;
@@ -83,7 +82,7 @@ public class OverlayUI : MonoBehaviour
             CannonUI();
             ShieldUI();
 
-            EnemyUI(ChosenEnemy);
+            EnemyUI(Networking.Instance.LocalMode ? Enemies.First(x => x.IsAI) : Enemies.First(x => x.HostData != null && x.HostData.guid == Networking.Instance.ChosenHost.guid));
         }
         else
             foreach (var e in Enemies.Where(x => x.HostData == null || x.HostData.gameName != Networking.MyGuid))
@@ -108,7 +107,6 @@ public class OverlayUI : MonoBehaviour
                 {
                     AudioRouter.Instance.PlayShoot(Random.value * 360);
                     GameFlow.State = GameState.ReadyToConnect;
-                    ChosenEnemy = e;
                     Networking.Instance.LocalMode = e.IsAI;
                     Networking.Instance.ChosenHost = e.HostData;
                     break;

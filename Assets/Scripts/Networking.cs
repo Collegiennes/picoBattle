@@ -275,6 +275,7 @@ class Networking : MonoBehaviour
         }
         IsClient = false;
         IsServer = true;
+        ChosenHost = Hosts.First(x => x.guid == player.guid);
 
         GameFlow.State = GameState.Gameplay;
     }
