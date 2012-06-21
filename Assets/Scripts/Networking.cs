@@ -293,10 +293,13 @@ class Networking : MonoBehaviour
 
     void ConnectToServer()
     {
+        var h = ChosenHost;
+        Debug.Log("Will attempt connection to : guid = " + h.guid + ", ip = " + h.ip.Aggregate("", (a, b) => a + (a == "" ? "" : ".") + b) + ", gameName = " + h.gameName);
+
         ChosenHost.useNat = true;
         Network.Connect(ChosenHost);
 
-        GameFlow.State = GameState.ReadyToConnect;
+        GameFlow.State = GameState.Connecting;
     }
 
     void OnFailedToConnect(NetworkConnectionError error)
