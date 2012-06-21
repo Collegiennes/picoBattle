@@ -12,7 +12,12 @@ class Networking : MonoBehaviour
 {
     public static Networking Instance;
 
-    public static readonly string MyGuid = new Guid().ToString();
+    public static readonly string MyGuid = Guid.NewGuid().ToString();
+
+    static Networking()
+    {
+        Debug.Log("My guid is " + MyGuid);
+    }
 
     const int Port = 10000;
     const float HostsUpdateRate = 2;
