@@ -17,6 +17,9 @@ public class Bullet : MonoBehaviour
 
     void Update()
     {
+        if (GameFlow.State == GameState.Lost)
+            Destroy(gameObject);
+
         if (GameFlow.State != GameState.Gameplay) return;
 
         if (Link.IsUnlinked)

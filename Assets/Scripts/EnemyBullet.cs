@@ -30,8 +30,6 @@ public class EnemyBullet : MonoBehaviour
 
     void Update()
     {
-        if (GameFlow.State != GameState.Gameplay) return;
-
         if (IsAutoDestructed)
         {
             sinceDestroyed += Time.deltaTime;
@@ -52,6 +50,13 @@ public class EnemyBullet : MonoBehaviour
 
         if (transform.position.magnitude < 45)
         {
+            if (GameFlow.State != GameState.Gameplay)
+            {
+                IsAutoDestructed = true;
+                Destroy(gameObject);
+                return;
+            }
+
             if (!IsAbsorbed)
             {
                 for (int i = 0; i < 5; i++)

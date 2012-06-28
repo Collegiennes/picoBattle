@@ -77,19 +77,25 @@ public class OverlayUI : MonoBehaviour
 
         GL.Begin(GL.TRIANGLES);
 
-        if (GameFlow.State > GameState.WaitingForChallenge && GameFlow.State < GameState.Won)
+        if (GameFlow.State < GameState.Won)
         {
-            CannonUI();
-            ShieldUI();
+            if (GameFlow.State > GameState.WaitingForChallenge)
+            {
+                CannonUI();
+                ShieldUI();
 
-            EnemyUI(Networking.Instance.LocalMode ? Enemies.First(x => x.IsAI) : Enemies.First(x => x.HostData != null && x.HostData.guid == Networking.Instance.ChosenHost.guid));
+                EnemyUI(Networking.Instance.LocalMode
+                            ? Enemies.First(x => x.IsAI)
+                            : Enemies.First(
+                                x => x.HostData != null && x.HostData.guid == Networking.Instance.ChosenHost.guid));
+            }
+            else
+                foreach (var e in Enemies.Where(x => x.HostData == null || x.HostData.gameName != Networking.MyGuid))
+                    EnemyUI(e);
+
+                foreach (var b in ShieldGenerator.Instance.DefendingAgainst.Where(x => !x.IsAutoDestructed).Take(3))
+                    IncomingBulletUI(b);
         }
-        else
-            foreach (var e in Enemies.Where(x => x.HostData == null || x.HostData.gameName != Networking.MyGuid))
-                EnemyUI(e);
-
-        foreach (var b in ShieldGenerator.Instance.DefendingAgainst.Where(x => !x.IsAutoDestructed).Take(3))
-            IncomingBulletUI(b);
 
         GL.End();
 
@@ -133,6 +139,9 @@ public class OverlayUI : MonoBehaviour
         {
             var thisA = i / Segments * Mathf.PI * 2;
             var nextA = (i + 1) / Segments * Mathf.PI * 2;
+
+            if (i == (int)Segments - 1)
+                nextA += 0.1f;
 
             GL.Vertex3(ssPos.x, ssPos.y, 0);
             GL.Vertex3(ssPos.x + (float)Math.Cos(thisA) * OutlineRadius * scaleFactor, ssPos.y + (float)Math.Sin(thisA) * OutlineRadius * scaleFactor, 0);
@@ -197,6 +206,9 @@ public class OverlayUI : MonoBehaviour
         {
             var thisA = i / Segments * Mathf.PI * 2;
             var nextA = (i + 1) / Segments * Mathf.PI * 2;
+
+            if (i == (int)Segments - 1)
+                nextA += 0.1f;
 
             GL.Vertex3(ssPos.x, ssPos.y, 0);
             GL.Vertex3(ssPos.x + (float)Math.Cos(thisA) * OutlineRadius, ssPos.y + (float)Math.Sin(thisA) * OutlineRadius, 0);

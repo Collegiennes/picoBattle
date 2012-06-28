@@ -84,7 +84,7 @@ public class ShieldGenerator : Structure
         foreach (var r in shieldInAir.GetComponentsInChildren<Renderer>())
             r.material.SetColor("_TintColor", addColor);
 
-        sphere.renderer.material.color = new Color(1, 1, 1, currentPower);
+        sphere.renderer.material.color = new Color(1, 1, 1, GameFlow.State == GameState.Gameplay ? currentPower : 0);
         sphere.renderer.material.SetColor("_Emission", alphaColor);
         fountain.renderer.material.SetColor("_TintColor", addColor);
         lightGo.light.color = ColorHelper.ColorFromHSV(CurrentHue, 1, 0.5f);

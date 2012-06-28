@@ -43,6 +43,13 @@ class Placement : MonoBehaviour
 
         foreach (var o in FindObjectsOfType(typeof(Bullet)))
             Destroy((o as Bullet).gameObject);
+
+        foreach (var o in FindObjectsOfType(typeof(EnemyBullet)))
+        {
+            var eb = o as EnemyBullet;
+            if (eb.IsAbsorbed)
+                Destroy(eb.gameObject);
+        }
     }
     
     void Place()

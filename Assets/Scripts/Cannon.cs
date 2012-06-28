@@ -88,6 +88,9 @@ public class Cannon : Structure
         bullet.renderer.material.SetColor("_Emission", ColorHelper.ColorFromHSV(CurrentHue, 1, 0.5f));
 
         var basePower = AccumulatedPower == 0 ? 0 : 250;
+        if (GameFlow.State != GameState.Gameplay)
+            AccumulatedPower = basePower = 0;
+
         bullet.transform.localScale = (new Vector3(basePower, basePower, basePower) + new Vector3(250, 250, 250) * Math.Min(AccumulatedPower, 4)); //* RandomHelper.Between(0.9f, 1f);
         AccumulatedPower = Mathf.Max(0, AccumulatedPower - Time.deltaTime * 0.625f);
 
