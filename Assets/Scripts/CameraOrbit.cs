@@ -11,6 +11,7 @@ class CameraOrbit : MonoBehaviour
     Quaternion DestinationRotation, CurrentRotation;
 
     AudioSource introTrack;
+    bool fromEndGame;
 
     void Start()
     {
@@ -23,7 +24,9 @@ class CameraOrbit : MonoBehaviour
 
     public void Reset()
     {
-        DestinationDistance = 100;
+        if (fromEndGame)
+            DestinationDistance = 100;
+        fromEndGame = false;
     }
 
     void FixedUpdate()
@@ -40,6 +43,7 @@ class CameraOrbit : MonoBehaviour
     {
         if (GameFlow.State >= GameState.Won)
         {
+            fromEndGame = true;
             DestinationDistance = Mathf.Lerp(DestinationDistance, 400, Time.deltaTime * (GameFlow.State == GameState.Won ? 15 : 1));
 
             camera.transform.localRotation = DestinationRotation;

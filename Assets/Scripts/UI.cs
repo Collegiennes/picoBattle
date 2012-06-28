@@ -11,7 +11,8 @@ public class UI : MonoBehaviour
     {
         GameFlow.State = GameState.Lost;
 
-        var go = Instantiate(LoseEffect);
+        Instantiate(LoseEffect);
+        AudioRouter.Instance.PlayImpact(UnityEngine.Random.Range(0, 360));
         
         Wait.Until(t => t >= 5, Networking.Instance.Reset);
     }
@@ -21,6 +22,7 @@ public class UI : MonoBehaviour
         GameFlow.State = GameState.Won;
 
         Instantiate(WinEffect);
+        AudioRouter.Instance.PlayShoot(UnityEngine.Random.Range(0, 360));
 
         Wait.Until(t => t >= 5, Networking.Instance.Reset);
     }
