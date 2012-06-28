@@ -335,8 +335,8 @@ public class OverlayUI : MonoBehaviour
                 var thisA = i / Segments * Mathf.PI * -2 * healthOnOne + Mathf.PI / 2;
                 var nextA = (i + 1) / Segments * Mathf.PI * -2 * healthOnOne + Mathf.PI / 2;
 
-                float cosThis = Mathf.Cos(thisA), sinThis = Mathf.Cos(thisA);
-                float cosNext = Mathf.Cos(nextA), sinNext = Mathf.Cos(nextA);
+                float cosThis = Mathf.Cos(thisA), sinThis = Mathf.Sin(thisA);
+                float cosNext = Mathf.Cos(nextA), sinNext = Mathf.Sin(nextA);
 
                 if (enemy.IsAI)
                 {
