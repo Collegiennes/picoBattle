@@ -77,7 +77,7 @@ public class OverlayUI : MonoBehaviour
 
         GL.Begin(GL.TRIANGLES);
 
-        if (GameFlow.State > GameState.WaitingForChallenge)
+        if (GameFlow.State > GameState.WaitingForChallenge && GameFlow.State < GameState.Won)
         {
             CannonUI();
             ShieldUI();

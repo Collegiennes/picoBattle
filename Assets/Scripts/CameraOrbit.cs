@@ -21,6 +21,11 @@ class CameraOrbit : MonoBehaviour
         introTrack = GetComponentsInChildren<AudioSource>()[1];
     }
 
+    public void Reset()
+    {
+        DestinationDistance = 100;
+    }
+
     void FixedUpdate()
     {
         if (introTrack == null) return;
@@ -35,10 +40,12 @@ class CameraOrbit : MonoBehaviour
     {
         if (GameFlow.State >= GameState.Won)
         {
+            DestinationDistance = Mathf.Lerp(DestinationDistance, 400, Time.deltaTime * (GameFlow.State == GameState.Won ? 15 : 1));
+
             camera.transform.localRotation = DestinationRotation;
-            camera.transform.RotateAround(Vector3.zero, camera.transform.right, -1 / 64f * (float)Math.Sqrt(CurrentDistance) / 15);
-            camera.transform.RotateAround(Vector3.zero, camera.transform.up, 0.0625f * (float)Math.Sqrt(CurrentDistance) / 15);
-            camera.transform.RotateAround(Vector3.zero, camera.transform.forward, -1 / 64f * (float)Math.Sqrt(CurrentDistance) / 4);
+            camera.transform.RotateAround(Vector3.zero, camera.transform.right, -Time.deltaTime * 2 * (float)Math.Sqrt(CurrentDistance) / 15);
+            camera.transform.RotateAround(Vector3.zero, camera.transform.up, Time.deltaTime * (float)Math.Sqrt(CurrentDistance) / 15);
+            camera.transform.RotateAround(Vector3.zero, camera.transform.forward, -Time.deltaTime * 2 * (float)Math.Sqrt(CurrentDistance) / 4);
             DestinationRotation = camera.transform.localRotation;
         }
         else

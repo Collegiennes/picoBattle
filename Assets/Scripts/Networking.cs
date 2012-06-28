@@ -213,6 +213,7 @@ class Networking : MonoBehaviour
         Cannon.Instance.Reset();
         Placement.Instance.Reset();
         MousePicking.Instance.Reset();
+        Camera.main.GetComponent<CameraOrbit>().Reset();
         EnemyHealth = 500;
         EnemyShieldHue = null;
         LocalMode = false;
