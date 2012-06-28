@@ -897,7 +897,6 @@ MonoBehaviour:
   IsEmitting: 0
   LinkFrom: {fileID: 0}
   LinkTo: {fileID: 0}
-  Hues: []
   CurrentHue: 0
   Health: 0
   CurrentHealth: 0
@@ -915,8 +914,8 @@ SphereCollider:
   m_IsTrigger: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 1.25
-  m_Center: {x: 5.96046448e-08, y: 0, z: -8.94069672e-08}
+  m_Radius: 2
+  m_Center: {x: 5.96046448e-08, y: .75, z: -8.94069672e-08}
 --- !u!1002 &13500001
 EditorExtensionImpl:
   serializedVersion: 6

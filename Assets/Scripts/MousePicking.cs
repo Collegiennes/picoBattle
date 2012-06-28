@@ -18,7 +18,7 @@ public class MousePicking : MonoBehaviour
     GameObject CurrentLink;
     Vector3? DragOrigin;
 
-    bool outer = false, inner = false;
+    bool outer, inner;
 
     public readonly List<Structure> Structures = new List<Structure>();
     public readonly List<ArcLink> Links = new List<ArcLink>();
@@ -54,7 +54,20 @@ public class MousePicking : MonoBehaviour
         if (Planet.collider.Raycast(ray, out info, 1000)) currentProjection = info.point.normalized;
         else
         {
-            if (CurrentLink != null)
+            float nearestDistance = float.MaxValue;
+            GameObject nearestObject = null;
+            foreach (var structure in Structures)
+                foreach (var c in structure.GetComponentsInChildren<Collider>())
+                    if (!structure.IsEmitting && c.Raycast(ray, out info, float.MaxValue) && info.distance < nearestDistance &&
+                        Vector3.Dot(Vector3.Normalize(structure.transform.position), Vector3.Normalize(Camera.main.transform.position)) > 0)
+                    {
+                        nearestDistance = info.distance;
+                        nearestObject = structure.gameObject;
+                    }
+
+            if (nearestObject != null)
+                currentProjection = nearestObject.transform.position.normalized;
+            else if (CurrentLink != null)
             {
                 if (Selected != null)
                     Selected.GetComponent<Structure>().LinkTo = null;
@@ -152,6 +165,8 @@ public class MousePicking : MonoBehaviour
         if (Mouse.LeftButton.State == MouseButtonState.DragStarted)
         {
             DragOrigin = currentProjection;
+            if (DragOrigin.Value == Vector3.zero && Selected != null)
+                DragOrigin = Selected.transform.position.normalized;
         }
 
         if (Selected != null && (Mouse.LeftButton.State == MouseButtonState.Down || Mouse.LeftButton.State == MouseButtonState.Dragging))
