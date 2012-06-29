@@ -36,6 +36,8 @@ public class Capsule : Structure
 
         base.LinkHue(hue);
 
+        StructuresVisited.Clear();
+
         Debug.Log("Linked hue " + hue.Hue + ", count = " + Hues.Count);
 
         if (Hues.Count == 1)

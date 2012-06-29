@@ -168,6 +168,6 @@ public class Cannon : Structure
     public override void OnBullet(Bullet bullet)
     {
         base.OnBullet(bullet);
-        AccumulatedPower++;
+        AccumulatedPower += 0.625f;
     }
 }

@@ -103,7 +103,7 @@ class Networking : MonoBehaviour
             Instance.hostHueUpdateRequired = true;
         }
 
-        if (Instance.LocalMode)
+        if (Instance.LocalMode && hue.HasValue)
         {
             if (!Instance.aiLastSeenShieldHue.HasValue || (DotHues(hue.Value, Instance.aiLastSeenShieldHue.Value) < 0.9f))
             {

@@ -19,11 +19,8 @@ public class Resource : Structure
             r.enabled = true;
 
         ChosenHue = null;
-        if (SphereChosen || highlighting)
-        {
-            SphereChosen = false;
-            HideSpheres();
-        }
+        SphereChosen = false;
+        HideSpheres();
         highlighting = showing = false;
     }
 
@@ -158,6 +155,10 @@ public class Resource : Structure
 
     public override float Hue
     {
-        get { return ChosenHue.HasValue ? ChosenHue.Value : 0; }
+        get
+        {
+            StructuresVisited.Add(this);
+            return ChosenHue.HasValue ? ChosenHue.Value : 0;
+        }
     }
 }

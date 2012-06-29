@@ -80,7 +80,13 @@ public class OverlayUI : MonoBehaviour
             foreach (var e in Enemies)
                 if (e.HostData != null && e.HostData.guid == h.guid)
                 {
-                    var newHue = h.comment == "Closed" || h.comment == "NotReady" ? (float?) null : float.Parse(h.comment);
+                    float? newHue;
+                    int parsedHue;
+                    if (!int.TryParse(h.comment, out parsedHue))
+                        newHue = null;
+                    else
+                        newHue = parsedHue;
+
                     if (e.Hue != newHue)
                     {
                         Debug.Log("Updated shield hue for host : guid = " + h.guid + ", ip = " + h.ip.Aggregate("", (a, b) => a + (a == "" ? "" : ".") + b));

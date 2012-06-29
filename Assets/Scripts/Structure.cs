@@ -43,20 +43,36 @@ public class Structure : MonoBehaviour
             LinkTo.SpawnBullet();
     }
 
+    public static HashSet<Structure> StructuresVisited = new HashSet<Structure>(); 
+
     public virtual float Hue
     {
         get
         {
-            if (Hues.Count == 0) return 0;
-            if (Hues.Count == 1) return Hues[0].Hue;
+            if (Hues.Count == 0) return 0; // TODO : Figure out why this gets used sometimes
+
+            if (StructuresVisited.Contains(this))
+                return StructuresVisited.First(x => x is Resource).Hue;
+
+            StructuresVisited.Add(this);
+
+            if (Hues.Count == 1)
+            {
+                var hue = Hues[0].Hue;
+                StructuresVisited.Remove(this);
+                return hue;
+            }
 
             Vector2 acc = Vector2.zero;
-            foreach (var h in Hues)
+            foreach (var h in Hues.OrderBy(x => x is Capsule))
                 acc += new Vector2(Mathf.Cos(Mathf.Deg2Rad * h.Hue), Mathf.Sin(Mathf.Deg2Rad * h.Hue));
             acc.Normalize();
             var angle = Mathf.Rad2Deg * Mathf.Atan2(acc.y, acc.x);
             if (angle < 0) angle += 360;
             if (angle >= 360) angle -= 360;
+
+            StructuresVisited.Remove(this);
+
             return angle;
         }
     }
