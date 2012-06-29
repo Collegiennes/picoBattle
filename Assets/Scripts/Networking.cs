@@ -554,6 +554,7 @@ class Networking : MonoBehaviour
         Placement.Instance.Reset();
         MousePicking.Instance.Reset();
         ShieldGenerator.Instance.Reset();
+        EnemyHealth = 500;
 
         GameFlow.State = GameState.Gameplay;
     }
@@ -591,6 +592,7 @@ class Networking : MonoBehaviour
     void OnConnectedToServer()
     {
         GameFlow.State = GameState.Gameplay;
+        EnemyHealth = 500;
         IsClient = true;
     }
 
