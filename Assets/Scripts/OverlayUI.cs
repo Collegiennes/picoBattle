@@ -144,7 +144,7 @@ public class OverlayUI : MonoBehaviour
         {
             foreach (var e in Enemies)
             {
-                if ((mousePos - e.LastKnownLocation).magnitude < 10 && e.Hue.HasValue)
+                if ((mousePos - e.LastKnownLocation).magnitude < 10 * globalScale && e.Hue.HasValue)
                 {
                     AudioRouter.Instance.PlayShoot(Random.value * 360);
                     GameFlow.State = GameState.ReadyToConnect;

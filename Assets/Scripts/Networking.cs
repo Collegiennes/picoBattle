@@ -91,6 +91,9 @@ class Networking : MonoBehaviour
 
     public static void RpcUpdateShieldHue(float? hue)
     {
+        if (GameFlow.State == GameState.WaitingForTest) // Tearing down, don't mind it
+            return;
+
         if (Instance.IsServer || Instance.IsClient)
             Instance.networkView.RPC("UpdateEnemyShieldHue", RPCMode.Others, hue.HasValue, hue.HasValue ? hue.Value : 0);
 
@@ -505,7 +508,10 @@ class Networking : MonoBehaviour
         if (!IsRegistered)
         {
             Network.maxConnections = 1;
-            MasterServer.RegisterHost(GameType, MyGuid, "NotReady");
+            MasterServer.RegisterHost(GameType, MyGuid, ShieldGenerator.Instance.IsPowered
+                                                            ? Mathf.RoundToInt(ShieldGenerator.Instance.Hue).ToString()
+                                                            : "NotReady");
+            hostHueUpdateRequired = false;
         }
 
         HostsUpdated(new HostData[0], Hosts ?? new HostData[0]);
