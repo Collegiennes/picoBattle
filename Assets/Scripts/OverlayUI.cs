@@ -8,12 +8,14 @@ using Random = UnityEngine.Random;
 
 public class OverlayUI : MonoBehaviour
 {
-    const float Segments = 16;
-    const float OutlineRadius = 20;
-    const float OuterRadius = 16;
-    const float InnerRadius = 12;
-    const float InnerMaskRadius = 9;
-    const float CoreRadius = 4.5f;
+    float Segments = 16;
+    float OutlineRadius = 20;
+    float OuterRadius = 16;
+    float InnerRadius = 12;
+    float InnerMaskRadius = 9;
+    float CoreRadius = 4.5f;
+
+    float globalScale;
 
     public GUIStyle style;
 
@@ -70,6 +72,14 @@ public class OverlayUI : MonoBehaviour
     {
         yield return new WaitForEndOfFrame();
 
+        globalScale = Screen.width / 1500f;
+        Segments = Math.Max(16, Mathf.RoundToInt(16 * globalScale));
+        OutlineRadius = 20 * globalScale;
+        OuterRadius = 16 * globalScale;
+        InnerRadius = 12 * globalScale;
+        InnerMaskRadius = 9 * globalScale;
+        CoreRadius = 4.5f * globalScale;
+
         GL.PushMatrix();
         GL.LoadPixelMatrix();
 
@@ -81,13 +91,16 @@ public class OverlayUI : MonoBehaviour
         {
             if (GameFlow.State > GameState.WaitingForChallenge)
             {
-                CannonUI();
-                ShieldUI();
+                if (GameFlow.State == GameState.Gameplay)
+                {
+                    CannonUI();
+                    ShieldUI();
+                }
 
                 EnemyUI(Networking.Instance.LocalMode
-                            ? Enemies.First(x => x.IsAI)
-                            : Enemies.First(
-                                x => x.HostData != null && x.HostData.guid == Networking.Instance.ChosenHost.guid));
+                                ? Enemies.First(x => x.IsAI)
+                                : Enemies.First(
+                                    x => x.HostData != null && x.HostData.guid == Networking.Instance.ChosenHost.guid));
             }
             else
                 foreach (var e in Enemies.Where(x => x.HostData == null || x.HostData.gameName != Networking.MyGuid))
@@ -104,6 +117,8 @@ public class OverlayUI : MonoBehaviour
 
     void Update()
     {
+        if (GameFlow.State > GameState.WaitingForChallenge) return;
+
         var mousePos = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
         if (Input.GetMouseButtonDown(0))
         {
@@ -291,16 +306,17 @@ public class OverlayUI : MonoBehaviour
         var scaleFactor = 1.125f;
 
         var ssPos = camera.WorldToScreenPoint(enemy.Location);
+        var spacing = 25 * globalScale;
 
         var arrowDirection = Vector3.zero;
-        if (ssPos.x < 25) arrowDirection.x -= 1;
-        if (ssPos.x > Screen.width - 25) arrowDirection.x += 1;
-        if (ssPos.y < 25) arrowDirection.y -= 1;
-        if (ssPos.y > Screen.height - 25) arrowDirection.y += 1;
+        if (ssPos.x < spacing) arrowDirection.x -= 1;
+        if (ssPos.x > Screen.width - spacing) arrowDirection.x += 1;
+        if (ssPos.y < spacing) arrowDirection.y -= 1;
+        if (ssPos.y > Screen.height - spacing) arrowDirection.y += 1;
         arrowDirection.Normalize();
 
-        ssPos.x = Mathf.Clamp(ssPos.x, 25, Screen.width - 25);
-        ssPos.y = Mathf.Clamp(ssPos.y, 25, Screen.height - 25);
+        ssPos.x = Mathf.Clamp(ssPos.x, spacing, Screen.width - spacing);
+        ssPos.y = Mathf.Clamp(ssPos.y, spacing, Screen.height - spacing);
 
         var camPos = Camera.main.transform.position;
         var diff = enemy.Location - camPos;
@@ -440,15 +456,17 @@ public class OverlayUI : MonoBehaviour
         var ssPos = camera.WorldToScreenPoint(bullet.transform.position);
         //Debug.Log("x = " + ssPos.x + ", y = " + ssPos.y);
 
+        var spacing = 25 * globalScale;
+
         var arrowDirection = Vector3.zero;
-        if (ssPos.x < 25) arrowDirection.x -= 1;
-        if (ssPos.x > Screen.width - 25) arrowDirection.x += 1;
-        if (ssPos.y < 25) arrowDirection.y -= 1;
-        if (ssPos.y > Screen.height - 25) arrowDirection.y += 1;
+        if (ssPos.x < spacing) arrowDirection.x -= 1;
+        if (ssPos.x > Screen.width - spacing) arrowDirection.x += 1;
+        if (ssPos.y < spacing) arrowDirection.y -= 1;
+        if (ssPos.y > Screen.height - spacing) arrowDirection.y += 1;
         arrowDirection.Normalize();
 
-        ssPos.x = Mathf.Clamp(ssPos.x, 25, Screen.width - 25);
-        ssPos.y = Mathf.Clamp(ssPos.y, 25, Screen.height - 25);
+        ssPos.x = Mathf.Clamp(ssPos.x, spacing, Screen.width - spacing);
+        ssPos.y = Mathf.Clamp(ssPos.y, spacing, Screen.height - spacing);
 
         GL.Color(Color.white);
 
@@ -500,16 +518,18 @@ public class OverlayUI : MonoBehaviour
             DrawArrow(arrowDirection, ssPos);
     }
 
-    static void DrawArrow(Vector3 arrowDirection, Vector3 ssPos)
+    void DrawArrow(Vector3 arrowDirection, Vector3 ssPos)
     {
-        var center = ssPos + arrowDirection * 19f;
+        var center = ssPos + arrowDirection * 19f * globalScale;
 
         var angle = Mathf.Rad2Deg * Mathf.Atan2(arrowDirection.y, arrowDirection.x);
         var quaterion = Quaternion.AngleAxis(angle, new Vector3(0, 0, 1));
 
-        var v1 = quaterion * new Vector3(3f, 0, 0) + center;
-        var v2 = quaterion * new Vector3(-3f, -3f, 0) + center;
-        var v3 = quaterion * new Vector3(-3f, 3f, 0) + center;
+        var arrowSize = 3f * globalScale;
+
+        var v1 = quaterion * new Vector3(arrowSize, 0, 0) + center;
+        var v2 = quaterion * new Vector3(-arrowSize, -arrowSize, 0) + center;
+        var v3 = quaterion * new Vector3(-arrowSize, arrowSize, 0) + center;
 
         GL.Vertex3(v1.x, v1.y, 0);
         GL.Vertex3(v2.x, v2.y, 0);

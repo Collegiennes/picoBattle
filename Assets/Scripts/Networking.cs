@@ -1,10 +1,7 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Text.RegularExpressions;
+using Mono.Nat;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -26,7 +23,9 @@ class Networking : MonoBehaviour
     public bool IsServer, IsClient, IsRegistered;
     public bool LocalMode;
 
-    string errorMessage;
+    INatDevice natDevice;
+    Mapping udpMapping, tcpMapping;
+    bool shouldTestConnection;
 
     float? sinceAiSawShieldUpdate, aiOffenseReactionTime, aiHueToCounter, aiLastSeenShieldHue, aiLastSeenBulletHue;
     float sinceAiShot, aiShootCooldown, aiBulletSize;
@@ -35,6 +34,7 @@ class Networking : MonoBehaviour
     public HostData ChosenHost;
     public HostData[] Hosts;
     float sinceUpdatedHosts;
+    bool useNat;
     public event Action<IEnumerable<HostData>, IEnumerable<HostData>> HostsUpdated;
 
     public GameObject BulletTemplate;
@@ -68,6 +68,17 @@ class Networking : MonoBehaviour
     void Awake()
     {
         Instance = this;
+    }
+
+    void Start()
+    {
+        NatUtility.DeviceFound += (s, ea) =>
+        {
+            natDevice = ea.Device;
+            MapPort();
+        };
+        NatUtility.DeviceLost += (s, ea) => { natDevice = null; };
+        NatUtility.StartDiscovery();
     }
 
     public static void RpcShootBullet(float power, float hue)
@@ -121,10 +132,116 @@ class Networking : MonoBehaviour
         }
     }
 
+    string testMessage, shouldEnableNatMessage, testStatus;
+    bool doneTesting;
+    bool probingPublicIp;
+
+    void TestConnection()
+    {
+        // Start/Poll the connection test, report the results in a label and 
+        // react to the results accordingly
+        var connectionTestResult = probingPublicIp ? Network.TestConnectionNAT() : Network.TestConnection();
+
+        switch (connectionTestResult)
+        {
+            case ConnectionTesterStatus.Error:
+                testMessage = "Problem determining NAT capabilities";
+                doneTesting = true;
+                break;
+
+            case ConnectionTesterStatus.Undetermined:
+                testMessage = "Undetermined NAT capabilities";
+                doneTesting = false;
+                break;
+
+            case ConnectionTesterStatus.PublicIPIsConnectable:
+                testMessage = "Directly connectable public IP address.";
+                useNat = false;
+                doneTesting = true;
+                break;
+
+            // This case is a bit special as we now need to check if we can 
+            // circumvent the blocking by using NAT punchthrough
+            case ConnectionTesterStatus.PublicIPPortBlocked:
+                testMessage = "Non-connectable public IP address (port blocked), running a server is impossible.";
+                useNat = false;
+                // If no NAT punchthrough test has been performed on this public 
+                // IP, force a test
+                if (!probingPublicIp)
+                {
+                    probingPublicIp = true;
+                    testStatus = "Testing if blocked public IP can be circumvented";
+                }
+                // NAT punchthrough test was performed but we still get blocked
+                else
+                {
+                    probingPublicIp = false;         // reset
+                    useNat = true;
+                    doneTesting = true;
+                }
+                break;
+            case ConnectionTesterStatus.PublicIPNoServerStarted:
+                testMessage = "Public IP address but server not initialized, " +
+                    "it must be started to check server accessibility. Restart " +
+                    "connection test when ready.";
+                break;
+
+            case ConnectionTesterStatus.LimitedNATPunchthroughPortRestricted:
+                testMessage = "Limited NAT punchthrough capabilities. Cannot " +
+                    "connect to all types of NAT servers. Running a server " +
+                    "is ill advised as not everyone can connect.";
+                useNat = true;
+                doneTesting = true;
+                break;
+
+            case ConnectionTesterStatus.LimitedNATPunchthroughSymmetric:
+                testMessage = "Limited NAT punchthrough capabilities. Cannot " +
+                    "connect to all types of NAT servers. Running a server " +
+                    "is ill advised as not everyone can connect.";
+                useNat = true;
+                doneTesting = true;
+                break;
+
+            case ConnectionTesterStatus.NATpunchthroughAddressRestrictedCone:
+            case ConnectionTesterStatus.NATpunchthroughFullCone:
+                testMessage = "NAT punchthrough capable. Can connect to all " +
+                    "servers and receive connections from all clients. Enabling " +
+                    "NAT punchthrough functionality.";
+                useNat = true;
+                doneTesting = true;
+                break;
+
+            default:
+                testMessage = "Error in test routine, got " + connectionTestResult;
+                break;
+        }
+
+        if (doneTesting)
+        {
+            if (useNat)
+                shouldEnableNatMessage = "When starting a server the NAT " +
+                    "punchthrough feature should be enabled (useNat parameter)";
+            else
+                shouldEnableNatMessage = "NAT punchthrough not needed";
+            testStatus = "Done testing";
+        }
+
+        if (connectionTestResult != ConnectionTesterStatus.Undetermined)
+            Debug.Log(testStatus + " : " + testMessage + " | " + shouldEnableNatMessage);
+    }
+
     void Update()
     {
+        if (shouldTestConnection && !doneTesting)
+            TestConnection();
+
         switch (GameFlow.State)
         {
+            case GameState.WaitingForTest:
+                if (doneTesting)
+                    GameFlow.State = GameState.RecreateServer;
+                break;
+
             case GameState.RecreateServer:
                 CreateServer();
                 GameFlow.State = GameState.WaitingForChallenge;
@@ -190,6 +307,24 @@ class Networking : MonoBehaviour
         if (IsServer) CloseServer();
         if (IsClient) Network.Disconnect();
         if (IsRegistered) MasterServer.UnregisterHost();
+
+        if (natDevice != null)
+        {
+            try
+            {
+                if (udpMapping != null)
+                    natDevice.DeletePortMap(udpMapping);
+                if (tcpMapping != null)
+                    natDevice.DeletePortMap(tcpMapping);
+                tcpMapping = udpMapping = null;
+                Debug.Log("Deleted port mapping");
+            }
+            catch (Exception ex)
+            {
+                Debug.Log("Failed to delete port mapping");
+            }
+        }
+        NatUtility.StopDiscovery();
     }
 
     void UpdateHosts()
@@ -206,9 +341,80 @@ class Networking : MonoBehaviour
         sinceUpdatedHosts = 0;
     }
 
+    void MapPort()
+    {
+        try
+        {
+            Debug.Log("Mapping port...");
+
+            bool udpDone = false; //, tcpDone = false;
+
+            udpMapping = new Mapping(Protocol.Udp, Port, Port) { Description = "Pico Battle (UDP)" };
+            natDevice.BeginCreatePortMap(udpMapping, state =>
+            {
+                if (state.IsCompleted)
+                {
+                    Debug.Log("UDP Mapping complete!");
+//                    Debug.Log("UDP Mapping complete! Testing...");
+//                    try
+//                    {
+//                        var m = natDevice.GetSpecificMapping(Protocol.Udp, Port);
+//                        if (m == null)
+//                            throw new InvalidOperationException("Mapping not found");
+//                        if (m.PrivatePort != Port || m.PublicPort != Port)
+//                            throw new InvalidOperationException("Mapping invalid");
+//
+//                        Debug.Log("Success!");
+//                    }
+//                    catch (Exception ex)
+//                    {
+//                        Debug.Log("Failed to validate UDP mapping :\n" + ex.ToString());
+//                    }
+
+                    udpDone = true;
+//                    if (tcpDone)
+                        shouldTestConnection = true;
+                }
+            }, null);
+
+//            tcpMapping = new Mapping(Protocol.Tcp, Port, Port) { Description = "Pico Battle (TCP)" };
+//            natDevice.BeginCreatePortMap(tcpMapping, state =>
+//            {
+//                if (state.IsCompleted)
+//                {
+//                    Debug.Log("TCP Mapping complete!");
+//                    Debug.Log("TCP Mapping complete! Testing...");
+//                    try
+//                    {
+//                        var m = natDevice.GetSpecificMapping(Protocol.Tcp, Port);
+//                        if (m == null)
+//                            throw new InvalidOperationException("Mapping not found");
+//                        if (m.PrivatePort != Port || m.PublicPort != Port)
+//                            throw new InvalidOperationException("Mapping invalid");
+//
+//                        Debug.Log("Success!");
+//                    }
+//                    catch (Exception ex)
+//                    {
+//                        Debug.Log("Failed to validate TCP mapping :\n" + ex.ToString());
+//                    }
+//
+//                    tcpDone = true;
+//                    if (udpDone)
+//                        shouldTestConnection = true;
+//                }
+//            }, null);
+        }
+        catch (Exception ex)
+        {
+            Debug.Log("Failed to map port :\n" + ex.ToString());
+            shouldTestConnection = true;
+        }
+    }
+
     public void Reset()
     {
-        GameFlow.State = GameState.RecreateServer;
+        GameFlow.State = GameState.WaitingForTest;
         ShieldGenerator.Instance.Reset();
         Cannon.Instance.Reset();
         Placement.Instance.Reset();
@@ -255,7 +461,7 @@ class Networking : MonoBehaviour
             Network.Disconnect();
 
         if (!IsServer)
-            Network.InitializeServer(1, Port, true);
+            Network.InitializeServer(1, Port, useNat);
 
         if (!IsRegistered)
             MasterServer.RegisterHost(GameType, MyGuid);
@@ -285,7 +491,6 @@ class Networking : MonoBehaviour
         IsServer = true;
         ChosenHost = Hosts.First(x => x.guid == player.guid);
 
-
         GameFlow.State = GameState.Gameplay;
     }
 
@@ -304,9 +509,10 @@ class Networking : MonoBehaviour
     void ConnectToServer()
     {
         var h = ChosenHost;
-        Debug.Log("Will attempt connection to : guid = " + h.guid + ", ip = " + h.ip.Aggregate("", (a, b) => a + (a == "" ? "" : ".") + b) + ", gameName = " + h.gameName);
+        Debug.Log("Will attempt connection to : useNat = " + h.useNat + " guid = " + h.guid + ", ip = " +
+                  h.ip.Aggregate("", (a, b) => a + (a == "" ? "" : ".") + b) + ", gameName = " + h.gameName);
 
-        ChosenHost.useNat = true;
+        ChosenHost.useNat = useNat;
         Network.Connect(ChosenHost);
 
         GameFlow.State = GameState.Connecting;
