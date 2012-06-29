@@ -33,7 +33,7 @@ class Networking : MonoBehaviour
 
     public HostData ChosenHost;
     public HostData[] Hosts;
-    float sinceUpdatedHosts;
+    float sinceUpdatedHosts, sinceUpdatedHue;
     bool useNat;
     public event Action<HostData[], HostData[]> HostsUpdated;
 
@@ -79,6 +79,7 @@ class Networking : MonoBehaviour
         };
         NatUtility.DeviceLost += (s, ea) => { natDevice = null; };
         NatUtility.StartDiscovery();
+        shouldTestConnection = true;
     }
 
     public static void RpcShootBullet(float power, float hue)
@@ -254,6 +255,8 @@ class Networking : MonoBehaviour
             Debug.Log(testStatus + " : " + testMessage + " | " + shouldEnableNatMessage);
     }
 
+    string lastComment;
+
     void Update()
     {
         if (shouldTestConnection && !doneTesting)
@@ -280,14 +283,23 @@ class Networking : MonoBehaviour
                     var comment = ShieldGenerator.Instance.IsPowered
                                       ? Mathf.RoundToInt(ShieldGenerator.Instance.Hue).ToString()
                                       : "NotReady";
-                    Debug.Log("Updated the hue on the master sever for this host : " + comment);
+                    if (lastComment != comment)
+                        Debug.Log("Updated the hue on the master sever for this host : " + comment);
                     MasterServer.RegisterHost(GameType, MyGuid, comment);
                     hostHueUpdateRequired = false;
+                    lastComment = comment;
                 }
 
                 sinceUpdatedHosts += Time.deltaTime;
                 if (sinceUpdatedHosts > HostsUpdateRate)
                     UpdateHosts();
+
+                sinceUpdatedHue += Time.deltaTime;
+                if (sinceUpdatedHue > 3)
+                {
+                    hostHueUpdateRequired = true;
+                    sinceUpdatedHue = 0;
+                }
                 break;
 
             case GameState.ReadyToConnect:
@@ -415,7 +427,6 @@ class Networking : MonoBehaviour
 
                     udpDone = true;
 //                    if (tcpDone)
-                        shouldTestConnection = true;
                 }
             }, null);
 
@@ -450,7 +461,6 @@ class Networking : MonoBehaviour
         catch (Exception ex)
         {
             Debug.Log("Failed to map port :\n" + ex.ToString());
-            shouldTestConnection = true;
         }
     }
 
@@ -465,6 +475,7 @@ class Networking : MonoBehaviour
         EnemyHealth = 500;
         EnemyShieldHue = null;
         LocalMode = false;
+        sinceUpdatedHue = sinceUpdatedHosts = 0;
     }
 
     void AI()

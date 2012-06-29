@@ -89,7 +89,7 @@ public class OverlayUI : MonoBehaviour
 
                     if (e.Hue != newHue)
                     {
-                        Debug.Log("Updated shield hue for host : guid = " + h.guid + ", ip = " + h.ip.Aggregate("", (a, b) => a + (a == "" ? "" : ".") + b));
+                        Debug.Log("Updated shield hue for host to " + newHue + " : guid = " + h.guid + ", ip = " + h.ip.Aggregate("", (a, b) => a + (a == "" ? "" : ".") + b));
                         e.Hue = newHue;
                     }
                 }
