@@ -26,6 +26,7 @@ public class OverlayUI : MonoBehaviour
         public Vector3 LastArrow;
         public bool IsAI;
         public HostData HostData;
+        public float? Hue;
     }
 
     readonly List<Enemy> Enemies = new List<Enemy>();
@@ -45,27 +46,47 @@ public class OverlayUI : MonoBehaviour
         mat.hideFlags = HideFlags.HideAndDontSave;
         mat.shader.hideFlags = HideFlags.HideAndDontSave;
 
-        Enemies.Add(new Enemy { Location = Random.onUnitSphere * 400, IsAI = true });
+        Enemies.Add(new Enemy { Location = Random.onUnitSphere * 400, IsAI = true, Hue = Random.Range(0, 360) });
 
         Networking.Instance.HostsUpdated += UpdateStars;
     }
 
-    void UpdateStars(IEnumerable<HostData> newHosts, IEnumerable<HostData> deletedHosts)
+    void UpdateStars(HostData[] newHosts, HostData[] oldHosts)
     {
-        if (newHosts.Count() != 0 || deletedHosts.Count() != 0)
+        var addedHosts = newHosts.Except(oldHosts, HostDataEqualityComparer.Default);
+        var deletedHosts = oldHosts.Except(newHosts, HostDataEqualityComparer.Default);
+
+        if (addedHosts.Count() != 0 || deletedHosts.Count() != 0)
         {
             Debug.Log("Updated hosts : " + newHosts.Count() + " new, " + deletedHosts.Count() + " deleted");
 
             int i = 0;
             foreach (var h in newHosts)
-                Debug.Log("New host #" + i++ + " : guid = " + h.guid + ", ip = " + h.ip.Aggregate("", (a, b) => a + (a == "" ? "" : ".") + b) + ", gameName = " + h.gameName);
+                Debug.Log("New host #" + i++ + " : guid = " + h.guid + ", ip = " + h.ip.Aggregate("", (a, b) => a + (a == "" ? "" : ".") + b) + ", comment = " + h.comment);
             i = 0;
             foreach (var h in deletedHosts)
-                Debug.Log("Deleted host #" + i++ + " : guid = " + h.guid + ", ip = " + h.ip.Aggregate("", (a, b) => a + (a == "" ? "" : ".") + b) + ", gameName = " + h.gameName);
+                Debug.Log("Deleted host #" + i++ + " : guid = " + h.guid + ", ip = " + h.ip.Aggregate("", (a, b) => a + (a == "" ? "" : ".") + b) + ", comment = " + h.comment);
         }
 
         Enemies.RemoveAll(x => deletedHosts.Any(y => x.HostData != null && y.guid == x.HostData.guid));
-        Enemies.AddRange(newHosts.Select(x => new Enemy { HostData = x, Location = Random.onUnitSphere * 400 }));
+        Enemies.AddRange(newHosts.Select(x =>
+            new Enemy
+            {
+                HostData = x,
+                Location = Random.onUnitSphere * 400
+            }));
+
+        foreach (var h in newHosts)
+            foreach (var e in Enemies)
+                if (e.HostData != null && e.HostData.guid == h.guid)
+                {
+                    var newHue = h.comment == "Closed" || h.comment == "NotReady" ? (float?) null : float.Parse(h.comment);
+                    if (e.Hue != newHue)
+                    {
+                        Debug.Log("Updated shield hue for host : guid = " + h.guid + ", ip = " + h.ip.Aggregate("", (a, b) => a + (a == "" ? "" : ".") + b));
+                        e.Hue = newHue;
+                    }
+                }
     }
 
     IEnumerator OnPostRender()
@@ -89,13 +110,12 @@ public class OverlayUI : MonoBehaviour
 
         if (GameFlow.State < GameState.Won)
         {
+            ShieldUI();
+
             if (GameFlow.State > GameState.WaitingForChallenge)
             {
                 if (GameFlow.State == GameState.Gameplay)
-                {
                     CannonUI();
-                    ShieldUI();
-                }
 
                 EnemyUI(Networking.Instance.LocalMode
                                 ? Enemies.First(x => x.IsAI)
@@ -103,7 +123,7 @@ public class OverlayUI : MonoBehaviour
                                     x => x.HostData != null && x.HostData.guid == Networking.Instance.ChosenHost.guid));
             }
             else
-                foreach (var e in Enemies.Where(x => x.HostData == null || x.HostData.gameName != Networking.MyGuid))
+                foreach (var e in Enemies.Where(x => x.HostData == null || (x.HostData.gameName != Networking.MyGuid && x.HostData.comment != "Closed" && x.Hue.HasValue)))
                     EnemyUI(e);
 
                 foreach (var b in ShieldGenerator.Instance.DefendingAgainst.Where(x => !x.IsAutoDestructed).Take(3))
@@ -124,7 +144,7 @@ public class OverlayUI : MonoBehaviour
         {
             foreach (var e in Enemies)
             {
-                if ((mousePos - e.LastKnownLocation).magnitude < 10)
+                if ((mousePos - e.LastKnownLocation).magnitude < 10 && e.Hue.HasValue)
                 {
                     AudioRouter.Instance.PlayShoot(Random.value * 360);
                     GameFlow.State = GameState.ReadyToConnect;
@@ -333,6 +353,8 @@ public class OverlayUI : MonoBehaviour
         }
 
         var ringColor = Networking.Instance.EnemyShieldHue.HasValue ? ColorHelper.ColorFromHSV(Networking.Instance.EnemyShieldHue.Value, 1, 0.4f) : Color.white;
+        if (GameFlow.State < GameState.Gameplay)
+            ringColor = enemy.Hue.HasValue ? ColorHelper.ColorFromHSV(enemy.Hue.Value, 1, 0.4f) : Color.white;
 
         GL.Color(ringColor);
 
@@ -349,11 +371,21 @@ public class OverlayUI : MonoBehaviour
             GL.Vertex3(ssPos.x + (float)Math.Cos(nextA) * InnerRadius * scaleFactor, ssPos.y + (float)Math.Sin(nextA) * InnerRadius * scaleFactor, 0);
         }
 
-        if (Networking.Instance.EnemyShieldHue.HasValue)
+        if (Networking.Instance.EnemyShieldHue.HasValue || GameFlow.State < GameState.Gameplay)
         {
-            GL.Color(ColorHelper.ColorFromHSV(Networking.Instance.EnemyShieldHue.Value, 1, 1));
+            float healthOnOne;
 
-            var healthOnOne = Mathf.Clamp01(Networking.Instance.EnemyHealth / 500f);
+            if (GameFlow.State < GameState.Gameplay)
+            {
+                GL.Color(ColorHelper.ColorFromHSV(enemy.Hue.Value, 1, 1));
+                healthOnOne = 1;
+            }
+            else
+            {
+                GL.Color(ColorHelper.ColorFromHSV(Networking.Instance.EnemyShieldHue.Value, 1, 1));
+                healthOnOne = Mathf.Clamp01(Networking.Instance.EnemyHealth / 500f);
+            }
+
             bool clampNext = false;
             float lastNextFrac = 0;
 

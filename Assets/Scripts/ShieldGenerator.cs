@@ -59,6 +59,13 @@ public class ShieldGenerator : Structure
             CurrentHue = Hue;
     }
 
+    public override void UnlinkHue(Structure hue)
+    {
+        base.UnlinkHue(hue);
+
+        Networking.RpcUpdateShieldHue(IsPowered ? Hue : (float?) null);
+    }
+
 
     void FixedUpdate()
     {

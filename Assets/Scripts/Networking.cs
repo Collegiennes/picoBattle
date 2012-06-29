@@ -35,7 +35,7 @@ class Networking : MonoBehaviour
     public HostData[] Hosts;
     float sinceUpdatedHosts;
     bool useNat;
-    public event Action<IEnumerable<HostData>, IEnumerable<HostData>> HostsUpdated;
+    public event Action<HostData[], HostData[]> HostsUpdated;
 
     public GameObject BulletTemplate;
 
@@ -83,16 +83,26 @@ class Networking : MonoBehaviour
 
     public static void RpcShootBullet(float power, float hue)
     {
-        Instance.networkView.RPC("ShootBullet", RPCMode.All, Instance.IsServer, power, hue);
+        if (Instance.IsServer || Instance.IsClient)
+            Instance.networkView.RPC("ShootBullet", RPCMode.All, Instance.IsServer, power, hue);
     }
 
-    public static void RpcUpdateShieldHue(float hue)
+    bool hostHueUpdateRequired;
+
+    public static void RpcUpdateShieldHue(float? hue)
     {
-        Instance.networkView.RPC("UpdateEnemyShieldHue", RPCMode.Others, hue);
+        if (Instance.IsServer || Instance.IsClient)
+            Instance.networkView.RPC("UpdateEnemyShieldHue", RPCMode.Others, hue.HasValue, hue.HasValue ? hue.Value : 0);
+
+        if (GameFlow.State <= GameState.WaitingForChallenge)
+        {
+            Debug.Log("Will update the host's hue for the master server");
+            Instance.hostHueUpdateRequired = true;
+        }
 
         if (Instance.LocalMode)
         {
-            if (!Instance.aiLastSeenShieldHue.HasValue || (DotHues(hue, Instance.aiLastSeenShieldHue.Value) < 0.9f))
+            if (!Instance.aiLastSeenShieldHue.HasValue || (DotHues(hue.Value, Instance.aiLastSeenShieldHue.Value) < 0.9f))
             {
                 Instance.aiOffenseReactionTime = Random.Range(2, 10);
                 Debug.Log("[AI] will react to shield change in " + Instance.aiOffenseReactionTime.Value + " seconds");
@@ -117,6 +127,7 @@ class Networking : MonoBehaviour
     public static void RpcUpdateHealth(float health)
     {
         Debug.Log("Sending new health to enemy : " + health);
+            if (Instance.IsServer || Instance.IsClient)
         Instance.networkView.RPC("UpdateEnemyHealth", RPCMode.Others, health);
     }
 
@@ -133,8 +144,9 @@ class Networking : MonoBehaviour
     }
 
     string testMessage, shouldEnableNatMessage, testStatus;
-    bool doneTesting;
+    bool doneTesting, retestAfterServerInit;
     bool probingPublicIp;
+    float sinceStartedProbing;
 
     void TestConnection()
     {
@@ -147,6 +159,7 @@ class Networking : MonoBehaviour
             case ConnectionTesterStatus.Error:
                 testMessage = "Problem determining NAT capabilities";
                 doneTesting = true;
+                retestAfterServerInit = false;
                 break;
 
             case ConnectionTesterStatus.Undetermined:
@@ -158,6 +171,7 @@ class Networking : MonoBehaviour
                 testMessage = "Directly connectable public IP address.";
                 useNat = false;
                 doneTesting = true;
+                retestAfterServerInit = false;
                 break;
 
             // This case is a bit special as we now need to check if we can 
@@ -171,19 +185,27 @@ class Networking : MonoBehaviour
                 {
                     probingPublicIp = true;
                     testStatus = "Testing if blocked public IP can be circumvented";
+                    sinceStartedProbing = 0;
                 }
                 // NAT punchthrough test was performed but we still get blocked
                 else
                 {
-                    probingPublicIp = false;         // reset
-                    useNat = true;
-                    doneTesting = true;
+                    sinceStartedProbing += Time.deltaTime;
+                    if (sinceStartedProbing > 10)
+                    {
+                        probingPublicIp = false;         // reset
+                        useNat = true;
+                        retestAfterServerInit = false;
+                        doneTesting = true;
+                    }
                 }
                 break;
             case ConnectionTesterStatus.PublicIPNoServerStarted:
                 testMessage = "Public IP address but server not initialized, " +
                     "it must be started to check server accessibility. Restart " +
                     "connection test when ready.";
+                retestAfterServerInit = true;
+                doneTesting = true;
                 break;
 
             case ConnectionTesterStatus.LimitedNATPunchthroughPortRestricted:
@@ -191,6 +213,7 @@ class Networking : MonoBehaviour
                     "connect to all types of NAT servers. Running a server " +
                     "is ill advised as not everyone can connect.";
                 useNat = true;
+                retestAfterServerInit = false;
                 doneTesting = true;
                 break;
 
@@ -199,6 +222,7 @@ class Networking : MonoBehaviour
                     "connect to all types of NAT servers. Running a server " +
                     "is ill advised as not everyone can connect.";
                 useNat = true;
+                retestAfterServerInit = false;
                 doneTesting = true;
                 break;
 
@@ -208,11 +232,8 @@ class Networking : MonoBehaviour
                     "servers and receive connections from all clients. Enabling " +
                     "NAT punchthrough functionality.";
                 useNat = true;
+                retestAfterServerInit = false;
                 doneTesting = true;
-                break;
-
-            default:
-                testMessage = "Error in test routine, got " + connectionTestResult;
                 break;
         }
 
@@ -226,7 +247,7 @@ class Networking : MonoBehaviour
             testStatus = "Done testing";
         }
 
-        if (connectionTestResult != ConnectionTesterStatus.Undetermined)
+        if (connectionTestResult != ConnectionTesterStatus.Undetermined && !(connectionTestResult == ConnectionTesterStatus.PublicIPPortBlocked && sinceStartedProbing > 0))
             Debug.Log(testStatus + " : " + testMessage + " | " + shouldEnableNatMessage);
     }
 
@@ -248,6 +269,19 @@ class Networking : MonoBehaviour
                 break;
 
             case GameState.WaitingForChallenge:
+                if (retestAfterServerInit)
+                    TestConnection();
+
+                if (hostHueUpdateRequired)
+                {
+                    var comment = ShieldGenerator.Instance.IsPowered
+                                      ? Mathf.RoundToInt(ShieldGenerator.Instance.Hue).ToString()
+                                      : "NotReady";
+                    Debug.Log("Updated the hue on the master sever for this host : " + comment);
+                    MasterServer.RegisterHost(GameType, MyGuid, comment);
+                    hostHueUpdateRequired = false;
+                }
+
                 sinceUpdatedHosts += Time.deltaTime;
                 if (sinceUpdatedHosts > HostsUpdateRate)
                     UpdateHosts();
@@ -256,9 +290,14 @@ class Networking : MonoBehaviour
             case GameState.ReadyToConnect:
                 if (IsRegistered)
                 {
-                    MasterServer.UnregisterHost();
+                    Network.maxConnections = -1;
+                    MasterServer.RegisterHost(GameType, MyGuid, "Closed");
                     IsRegistered = false;
                 }
+
+                Placement.Instance.Reset();
+                MousePicking.Instance.Reset();
+                ShieldGenerator.Instance.Reset();
 
                 if (LocalMode)
                 {
@@ -336,7 +375,7 @@ class Networking : MonoBehaviour
 
         Hosts = newHosts;
 
-        HostsUpdated(newHosts.Except(oldHosts, HostDataEqualityComparer.Default), oldHosts.Except(newHosts, HostDataEqualityComparer.Default));
+        HostsUpdated(newHosts, oldHosts);
 
         sinceUpdatedHosts = 0;
     }
@@ -464,9 +503,12 @@ class Networking : MonoBehaviour
             Network.InitializeServer(1, Port, useNat);
 
         if (!IsRegistered)
-            MasterServer.RegisterHost(GameType, MyGuid);
+        {
+            Network.maxConnections = 1;
+            MasterServer.RegisterHost(GameType, MyGuid, "NotReady");
+        }
 
-        HostsUpdated(Enumerable.Empty<HostData>(), Hosts ?? Enumerable.Empty<HostData>());
+        HostsUpdated(new HostData[0], Hosts ?? new HostData[0]);
         Hosts = new HostData[0];
         sinceUpdatedHosts = 0;
 
@@ -484,12 +526,17 @@ class Networking : MonoBehaviour
     {
         if (IsRegistered)
         {
-            MasterServer.UnregisterHost();
+            Network.maxConnections = -1;
+            MasterServer.RegisterHost(GameType, MyGuid, "Closed");
             IsRegistered = false;
         }
         IsClient = false;
         IsServer = true;
         ChosenHost = Hosts.First(x => x.guid == player.guid);
+
+        Placement.Instance.Reset();
+        MousePicking.Instance.Reset();
+        ShieldGenerator.Instance.Reset();
 
         GameFlow.State = GameState.Gameplay;
     }
@@ -551,7 +598,7 @@ class Networking : MonoBehaviour
                     var newHue = RandomHelper.Between(hue - 30, hue + 30) % 360;
                     if (newHue < 0) newHue += 360;
                     Debug.Log("[AI] reacting to bullet hue " + hue + " with " + newHue);
-                    UpdateEnemyShieldHue(newHue);
+                    UpdateEnemyShieldHue(true, newHue);
                 }, true);
 
                 aiLastSeenBulletHue = hue;
@@ -610,9 +657,9 @@ class Networking : MonoBehaviour
     }
 
     [RPC]
-    public void UpdateEnemyShieldHue(float hue)
+    public void UpdateEnemyShieldHue(bool isPowered, float hue)
     {
-        EnemyShieldHue = hue;
+        EnemyShieldHue = isPowered ? hue : (float?) null;
     }
     [RPC]
     public void UpdateEnemyHealth(float health)

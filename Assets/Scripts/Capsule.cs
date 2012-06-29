@@ -74,7 +74,8 @@ public class Capsule : Structure
                     LinkTo.Unlink();
 
                     //Structures.Add(or);
-                    or.Reset();
+                    if (or != null)
+                        or.Reset();
                 }
 
                 Dispose();

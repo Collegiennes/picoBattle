@@ -39,11 +39,15 @@ public class MousePicking : MonoBehaviour
         foreach (var l in Links.ToArray())
             l.Unlink();
         Links.Clear();
+
+        // Destroy remaining arclinks
+        foreach (var o in FindObjectsOfType(typeof(ArcLink)))
+            Destroy((o as ArcLink).gameObject);
     }
 
     void Update()
     {
-        if (GameFlow.State != GameState.Gameplay) return;
+        if (GameFlow.State != GameState.Gameplay && GameFlow.State > GameState.WaitingForChallenge) return;
 
         var position = Mouse.Position;
         //var agp = Gamepads.Any;
@@ -210,6 +214,9 @@ public class MousePicking : MonoBehaviour
             GameObject nearestObject = null;
             foreach (var structure in Structures)
             {
+                if (GameFlow.State != GameState.Gameplay && structure.GetComponent<Cannon>() != null)
+                    continue;
+
                 if (structure.GetComponentInChildren<Collider>().Raycast(ray, out info, float.MaxValue))
                 {
                     if (info.distance < nearestDistance && structure.gameObject != Selected && Vector3.Angle(structure.transform.position.normalized, Camera.main.transform.position.normalized) < 90)
@@ -245,6 +252,9 @@ public class MousePicking : MonoBehaviour
                 GameObject nearestObject = null;
                 foreach (var structure in Structures)
                 {
+                    if (GameFlow.State != GameState.Gameplay && structure.GetComponent<Cannon>() != null)
+                        continue;
+
                     if (structure.GetComponentInChildren<Collider>().Raycast(ray, out info, float.MaxValue))
                     {
                         if (info.distance < nearestDistance && structure.gameObject != Selected && Vector3.Angle(structure.transform.position.normalized, DragOrigin.Value) < 90)
