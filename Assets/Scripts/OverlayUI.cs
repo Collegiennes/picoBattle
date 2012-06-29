@@ -352,7 +352,7 @@ public class OverlayUI : MonoBehaviour
             arrowDirection = enemy.LastArrow;
         }
 
-        var ringColor = Networking.Instance.EnemyShieldHue.HasValue ? ColorHelper.ColorFromHSV(Networking.Instance.EnemyShieldHue.Value, 1, 0.4f) : Color.white;
+        var ringColor = Networking.Instance.EnemyShieldHue.HasValue ? ColorHelper.ColorFromHSV(Networking.Instance.EnemyShieldHue.Value, 1, 0.4f) : Color.grey;
         if (GameFlow.State < GameState.Gameplay)
             ringColor = enemy.Hue.HasValue ? ColorHelper.ColorFromHSV(enemy.Hue.Value, 1, 0.4f) : Color.white;
 
@@ -371,70 +371,68 @@ public class OverlayUI : MonoBehaviour
             GL.Vertex3(ssPos.x + (float)Math.Cos(nextA) * InnerRadius * scaleFactor, ssPos.y + (float)Math.Sin(nextA) * InnerRadius * scaleFactor, 0);
         }
 
-        if (Networking.Instance.EnemyShieldHue.HasValue || GameFlow.State < GameState.Gameplay)
+        float healthOnOne;
+
+        if (GameFlow.State < GameState.Gameplay)
         {
-            float healthOnOne;
+            GL.Color(ColorHelper.ColorFromHSV(enemy.Hue.Value, 1, 1));
+            healthOnOne = 1;
+        }
+        else
+        {
+            var color = Networking.Instance.EnemyShieldHue.HasValue ? ColorHelper.ColorFromHSV(Networking.Instance.EnemyShieldHue.Value, 1, 1) : Color.white;
+            GL.Color(color);
+            healthOnOne = Mathf.Clamp01(Networking.Instance.EnemyHealth / 500f);
+        }
 
-            if (GameFlow.State < GameState.Gameplay)
+        bool clampNext = false;
+        float lastNextFrac = 0;
+
+        // Make pointe de tarte
+        for (int i = 0; i <= Segments; i++)
+        {
+            var thisA = i / Segments * Mathf.PI * -2 * healthOnOne + Mathf.PI / 2;
+            var nextA = (i + 1) / Segments * Mathf.PI * -2 * healthOnOne + Mathf.PI / 2;
+
+            float cosThis = Mathf.Cos(thisA), sinThis = Mathf.Sin(thisA);
+            float cosNext = Mathf.Cos(nextA), sinNext = Mathf.Sin(nextA);
+
+            if (enemy.IsAI)
             {
-                GL.Color(ColorHelper.ColorFromHSV(enemy.Hue.Value, 1, 1));
-                healthOnOne = 1;
-            }
-            else
-            {
-                GL.Color(ColorHelper.ColorFromHSV(Networking.Instance.EnemyShieldHue.Value, 1, 1));
-                healthOnOne = Mathf.Clamp01(Networking.Instance.EnemyHealth / 500f);
-            }
+                float h1ThisStep = Mathf.Floor((i / Segments * healthOnOne) * 6f) / 6f, h2ThisStep = Mathf.Ceil((i / Segments * healthOnOne) * 6f) / 6f;
+                float h1NextStep = Mathf.Floor(((i + 1) / Segments * healthOnOne) * 6f) / 6f, h2NextStep = Mathf.Ceil(((i + 1) / Segments * healthOnOne) * 6f) / 6f;
+                var thisFrac = MathHelper.Frac(i / Segments * healthOnOne * 6f);
+                var nextFrac = MathHelper.Frac((i + 1) / Segments * healthOnOne * 6f);
 
-            bool clampNext = false;
-            float lastNextFrac = 0;
+                float h1ThisA = h1ThisStep * Mathf.PI * -2 + Mathf.PI / 2, h1NextA = h1NextStep * Mathf.PI * -2 + Mathf.PI / 2;
+                float h2ThisA = h2ThisStep * Mathf.PI * -2 + Mathf.PI / 2, h2NextA = h2NextStep * Mathf.PI * -2 + Mathf.PI / 2;
 
-            // Make pointe de tarte
-            for (int i = 0; i <= Segments; i++)
-            {
-                var thisA = i / Segments * Mathf.PI * -2 * healthOnOne + Mathf.PI / 2;
-                var nextA = (i + 1) / Segments * Mathf.PI * -2 * healthOnOne + Mathf.PI / 2;
+                if (i == Segments && clampNext)
+                    nextFrac = lastNextFrac;
+                else if (i == Segments && !clampNext)
+                    continue;
 
-                float cosThis = Mathf.Cos(thisA), sinThis = Mathf.Sin(thisA);
-                float cosNext = Mathf.Cos(nextA), sinNext = Mathf.Sin(nextA);
-
-                if (enemy.IsAI)
+                if (clampNext)
                 {
-                    float h1ThisStep = Mathf.Floor((i / Segments * healthOnOne) * 6f) / 6f, h2ThisStep = Mathf.Ceil((i / Segments * healthOnOne) * 6f) / 6f;
-                    float h1NextStep = Mathf.Floor(((i + 1) / Segments * healthOnOne) * 6f) / 6f, h2NextStep = Mathf.Ceil(((i + 1) / Segments * healthOnOne) * 6f) / 6f;
-                    var thisFrac = MathHelper.Frac(i / Segments * healthOnOne * 6f);
-                    var nextFrac = MathHelper.Frac((i + 1) / Segments * healthOnOne * 6f);
-
-                    float h1ThisA = h1ThisStep * Mathf.PI * -2 + Mathf.PI / 2, h1NextA = h1NextStep * Mathf.PI * -2 + Mathf.PI / 2;
-                    float h2ThisA = h2ThisStep * Mathf.PI * -2 + Mathf.PI / 2, h2NextA = h2NextStep * Mathf.PI * -2 + Mathf.PI / 2;
-
-                    if (i == Segments && clampNext)
-                        nextFrac = lastNextFrac;
-                    else if (i == Segments && !clampNext)
-                        continue;
-
-                    if (clampNext)
-                    {
-                        thisFrac = 0;
-                        clampNext = false;
-                    }
-                    else if (h1ThisStep != h1NextStep)
-                    {
-                        lastNextFrac = nextFrac;
-                        nextFrac = 0;
-                        clampNext = true;
-                    }
-
-                    cosThis = Mathf.Lerp(Mathf.Cos(h1ThisA), Mathf.Cos(h2ThisA), thisFrac);
-                    sinThis = Mathf.Lerp(Mathf.Sin(h1ThisA), Mathf.Sin(h2ThisA), thisFrac);
-                    cosNext = Mathf.Lerp(Mathf.Cos(h1NextA), Mathf.Cos(h2NextA), nextFrac);
-                    sinNext = Mathf.Lerp(Mathf.Sin(h1NextA), Mathf.Sin(h2NextA), nextFrac);
+                    thisFrac = 0;
+                    clampNext = false;
+                }
+                else if (h1ThisStep != h1NextStep)
+                {
+                    lastNextFrac = nextFrac;
+                    nextFrac = 0;
+                    clampNext = true;
                 }
 
-                GL.Vertex3(ssPos.x, ssPos.y, 0);
-                GL.Vertex3(ssPos.x + cosThis * InnerRadius * scaleFactor, ssPos.y + sinThis * InnerRadius * scaleFactor, 0);
-                GL.Vertex3(ssPos.x + cosNext * InnerRadius * scaleFactor, ssPos.y + sinNext * InnerRadius * scaleFactor, 0);
+                cosThis = Mathf.Lerp(Mathf.Cos(h1ThisA), Mathf.Cos(h2ThisA), thisFrac);
+                sinThis = Mathf.Lerp(Mathf.Sin(h1ThisA), Mathf.Sin(h2ThisA), thisFrac);
+                cosNext = Mathf.Lerp(Mathf.Cos(h1NextA), Mathf.Cos(h2NextA), nextFrac);
+                sinNext = Mathf.Lerp(Mathf.Sin(h1NextA), Mathf.Sin(h2NextA), nextFrac);
             }
+
+            GL.Vertex3(ssPos.x, ssPos.y, 0);
+            GL.Vertex3(ssPos.x + cosThis * InnerRadius * scaleFactor, ssPos.y + sinThis * InnerRadius * scaleFactor, 0);
+            GL.Vertex3(ssPos.x + cosNext * InnerRadius * scaleFactor, ssPos.y + sinNext * InnerRadius * scaleFactor, 0);
         }
 
         var bgColor = new Color(36 / 255f, 34 / 255f, 34 / 255f);

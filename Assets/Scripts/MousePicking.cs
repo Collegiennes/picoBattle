@@ -40,6 +40,15 @@ public class MousePicking : MonoBehaviour
             l.Unlink();
         Links.Clear();
 
+        if (CurrentLink != null)
+        {
+            if (Selected != null)
+                Selected.GetComponent<Structure>().LinkTo = null;
+            Destroy(CurrentLink);
+            CurrentLink = null;
+            DragOrigin = null;
+        }
+
         // Destroy remaining arclinks
         foreach (var o in FindObjectsOfType(typeof(ArcLink)))
             Destroy((o as ArcLink).gameObject);
