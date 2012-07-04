@@ -265,6 +265,9 @@ class Networking : MonoBehaviour
         switch (GameFlow.State)
         {
             case GameState.WaitingForTest:
+                if (Input.GetKeyDown(KeyCode.Escape))
+                    Application.Quit();
+
                 if (doneTesting)
                     GameFlow.State = GameState.RecreateServer;
                 break;
@@ -300,6 +303,9 @@ class Networking : MonoBehaviour
                     hostHueUpdateRequired = true;
                     sinceUpdatedHue = 0;
                 }
+
+                if (Input.GetKeyDown(KeyCode.Escape))
+                    Application.Quit();
                 break;
 
             case GameState.ReadyToConnect:
@@ -650,7 +656,7 @@ class Networking : MonoBehaviour
             });
         }
 
-        if (fromServer == IsServer)
+        if (fromServer == (IsServer || LocalMode))
             return;
 
         var go = Instantiate(BulletTemplate) as GameObject;
