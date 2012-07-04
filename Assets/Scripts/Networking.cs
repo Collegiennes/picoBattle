@@ -335,9 +335,20 @@ class Networking : MonoBehaviour
                     aiBulletSize = 1;
 
                     aiHueToCounter = Random.Range(0, 360);
-                    aiOffenseReactionTime = Random.Range(5, 15);
+                    aiOffenseReactionTime = Random.Range(10, 20);
 
-                    Debug.Log("[AI] will power up shield in " + aiOffenseReactionTime.Value + " seconds");
+                    var defenseReactionTime = Random.Range(5, 10);
+                    var hue = Random.Range(0, 360);
+                    Debug.Log("[AI] will react to bullet hue " + hue + " in " + defenseReactionTime);
+                    Wait.Until(t => t > defenseReactionTime, () =>
+                    {
+                        var newHue = RandomHelper.Between(hue - 30, hue + 30) % 360;
+                        if (newHue < 0) newHue += 360;
+                        Debug.Log("[AI] initial enemy shield hue set to " + newHue);
+                        UpdateEnemyShieldHue(true, newHue);
+                    }, true);
+
+                    Debug.Log("[AI] will power up shield in " + defenseReactionTime + " seconds");
 
                     GameFlow.State = GameState.Gameplay;
                 }
@@ -675,7 +686,7 @@ class Networking : MonoBehaviour
     [RPC]
     public void EndGame(bool fromServer)
     {
-        if (fromServer == IsServer)
+        if (fromServer == (IsServer || LocalMode))
             return;
 
         BroadcastMessage("OnWin", SendMessageOptions.DontRequireReceiver);
